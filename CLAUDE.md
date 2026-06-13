@@ -13,7 +13,7 @@
 | weather-service    | 8083  | weather_db   | Done     |
 | ai-advisor-service | 8084  | —            | Done     |
 | notification-service | 8085 | notification_db | Done  |
-| api-gateway        | 8080  | —            | Planned  |
+| api-gateway        | 8080  | —            | Done     |
 
 ## Architecture Rules (apply to every service)
 
