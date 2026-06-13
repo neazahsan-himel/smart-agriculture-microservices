@@ -12,7 +12,7 @@
 | crop-service       | 8082  | crop_db      | Done     |
 | weather-service    | 8083  | weather_db   | Done     |
 | ai-advisor-service | 8084  | —            | Done     |
-| notification-service | 8085 | —           | Planned  |
+| notification-service | 8085 | notification_db | Done  |
 | api-gateway        | 8080  | —            | Planned  |
 
 ## Architecture Rules (apply to every service)
