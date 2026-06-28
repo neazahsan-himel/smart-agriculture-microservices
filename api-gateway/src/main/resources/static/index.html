@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Agriculture Advisor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f7f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, #2e7d32, #43a047);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        header .logo {
+            font-size: 32px;
+        }
+
+        header .title h1 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        header .title p {
+            font-size: 13px;
+            opacity: 0.85;
+        }
+
+        header .status-dot {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        header .status-dot span {
+            width: 9px;
+            height: 9px;
+            background: #a5d6a7;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ── Query type bar ── */
+        .query-bar {
+            background: white;
+            padding: 10px 20px;
+            border-bottom: 1px solid #c8e6c9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .query-bar label {
+            font-size: 13px;
+            color: #555;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .query-bar select {
+            border: 1.5px solid #a5d6a7;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 13px;
+            color: #2e7d32;
+            background: #f1f8e9;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .query-bar select:focus {
+            border-color: #2e7d32;
+        }
+
+        /* ── Chat area ── */
+        #chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Welcome message */
+        .welcome {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .welcome .icon { font-size: 56px; margin-bottom: 12px; }
+        .welcome h2 { color: #2e7d32; font-size: 20px; margin-bottom: 8px; }
+        .welcome p { font-size: 14px; line-height: 1.6; max-width: 400px; margin: 0 auto; }
+
+        .welcome .examples {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .welcome .example-chip {
+            background: white;
+            border: 1.5px solid #a5d6a7;
+            color: #2e7d32;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .welcome .example-chip:hover {
+            background: #e8f5e9;
+        }
+
+        /* Message bubbles */
+        .message {
+            display: flex;
+            gap: 10px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.farmer {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message.ai {
+            align-self: flex-start;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .message.farmer .avatar { background: #c8e6c9; }
+        .message.ai .avatar     { background: #2e7d32; }
+
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.farmer .bubble {
+            background: #2e7d32;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai .bubble {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        .message.ai .bubble.error {
+            background: #fff3f3;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .meta {
+            font-size: 11px;
+            margin-top: 4px;
+            color: #999;
+            padding: 0 4px;
+        }
+
+        .message.farmer .meta { text-align: right; }
+
+        /* ── Typing indicator ── */
+        .typing-indicator {
+            display: flex;
+            align-self: flex-start;
+            gap: 10px;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .typing-dots {
+            background: white;
+            padding: 14px 18px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #a5d6a7;
+            border-radius: 50%;
+            animation: bounce 1.2s infinite;
+        }
+
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(1); opacity: 0.6; }
+            40% { transform: scale(1.3); opacity: 1; }
+        }
+
+        /* ── Input area ── */
+        .input-area {
+            background: white;
+            border-top: 1px solid #c8e6c9;
+            padding: 14px 20px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        #question-input {
+            flex: 1;
+            border: 1.5px solid #c8e6c9;
+            border-radius: 24px;
+            padding: 12px 18px;
+            font-size: 15px;
+            resize: none;
+            outline: none;
+            max-height: 120px;
+            line-height: 1.5;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        #question-input:focus {
+            border-color: #2e7d32;
+        }
+
+        #question-input::placeholder {
+            color: #aaa;
+        }
+
+        #send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #2e7d32;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        #send-btn:hover  { background: #1b5e20; }
+        #send-btn:active { transform: scale(0.94); }
+        #send-btn:disabled { background: #a5d6a7; cursor: not-allowed; }
+
+        #send-btn svg { fill: white; }
+
+        .input-hint {
+            font-size: 11px;
+            color: #aaa;
+            padding: 0 4px;
+            margin-top: 4px;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            .message { max-width: 95%; }
+            header .title h1 { font-size: 17px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">🌾</div>
+    <div class="title">
+        <h1>Smart Agriculture Advisor</h1>
+        <p>AI-powered crop, weather &amp; farming guidance</p>
+    </div>
+    <div class="status-dot">
+        <span></span> AI Ready
+    </div>
+</header>
+
+<div class="query-bar">
+    <label for="query-type">Topic:</label>
+    <select id="query-type">
+        <option value="GENERAL">General Question</option>
+        <option value="CROP_RECOMMENDATION">Crop Recommendation</option>
+        <option value="PEST_CONTROL">Pest Control</option>
+        <option value="WEATHER_ALERT">Weather Alert</option>
+        <option value="PLANTING_SCHEDULE">Planting Schedule</option>
+        <option value="IRRIGATION_ADVICE">Irrigation Advice</option>
+    </select>
+</div>
+
+<div id="chat-area">
+    <div class="welcome" id="welcome">
+        <div class="icon">🌱</div>
+        <h2>Hello, Farmer!</h2>
+        <p>Ask me anything about your crops, soil, weather, pests, or farming practices. I'm here to help.</p>
+        <div class="examples">
+            <div class="example-chip" onclick="fillExample(this)">My rice leaves are turning yellow</div>
+            <div class="example-chip" onclick="fillExample(this)">Best crops for sandy soil</div>
+            <div class="example-chip" onclick="fillExample(this)">When should I irrigate wheat?</div>
+            <div class="example-chip" onclick="fillExample(this)">How to control aphids on tomato?</div>
+        </div>
+    </div>
+</div>
+
+<div style="padding: 0 20px;">
+    <div class="input-hint">Press Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
+</div>
+
+<div class="input-area">
+    <textarea
+        id="question-input"
+        placeholder="Ask your farming question..."
+        rows="1"
+        maxlength="1000"
+    ></textarea>
+    <button id="send-btn" onclick="sendMessage()" title="Send">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+    </button>
+</div>
+
+<script>
+    const chatArea   = document.getElementById('chat-area');
+    const input      = document.getElementById('question-input');
+    const sendBtn    = document.getElementById('send-btn');
+    const queryType  = document.getElementById('query-type');
+    let   isWaiting  = false;
+
+    // Auto-resize textarea
+    input.addEventListener('input', () => {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    });
+
+    // Enter = send, Shift+Enter = newline
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    function fillExample(el) {
+        input.value = el.textContent;
+        input.focus();
+        input.dispatchEvent(new Event('input'));
+    }
+
+    function sendMessage() {
+        const question = input.value.trim();
+        if (!question || isWaiting) return;
+
+        hideWelcome();
+        appendMessage('farmer', question);
+        input.value = '';
+        input.style.height = 'auto';
+
+        const indicator = showTyping();
+        setWaiting(true);
+
+        fetch('/api/v1/advisor/advice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question:  question,
+                queryType: queryType.value
+            })
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().catch(() => null).then(body => {
+                    throw new Error(body?.message || 'Service unavailable. Please try again.');
+                });
+            }
+            return res.json();
+        })
+        .then(data => {
+            removeTyping(indicator);
+            appendMessage('ai', data.advice || 'No advice returned.');
+        })
+        .catch(err => {
+            removeTyping(indicator);
+            appendMessage('ai', err.message || 'Something went wrong. Please try again.', true);
+        })
+        .finally(() => {
+            setWaiting(false);
+        });
+    }
+
+    function appendMessage(role, text, isError = false) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `message ${role}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = role === 'farmer' ? '👨‍🌾' : '🤖';
+
+        const inner = document.createElement('div');
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble' + (isError ? ' error' : '');
+        bubble.textContent = text;
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = formatTime(new Date());
+
+        inner.appendChild(bubble);
+        inner.appendChild(meta);
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(inner);
+        chatArea.appendChild(wrapper);
+        scrollToBottom();
+    }
+
+    function showTyping() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'typing-indicator';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = '🤖';
+
+        const dots = document.createElement('div');
+        dots.className = 'typing-dots';
+        dots.innerHTML = '<span></span><span></span><span></span>';
+
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(dots);
+        chatArea.appendChild(wrapper);
+        scrollToBottom();
+        return wrapper;
+    }
+
+    function removeTyping(el) {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+    }
+
+    function hideWelcome() {
+        const w = document.getElementById('welcome');
+        if (w) w.remove();
+    }
+
+    function setWaiting(val) {
+        isWaiting = val;
+        sendBtn.disabled = val;
+        input.disabled   = val;
+    }
+
+    function scrollToBottom() {
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function formatTime(date) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+</script>
+
+</body>
+</html>
