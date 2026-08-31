@@ -1,0 +1,74 @@
+# Agro Agent — Karim Saheb Anchor Farmer Persona & Capability Matrix
+
+> Extracted from `agro-agent-karim-saheb-capability-matrix.xlsx`. Source of truth is the xlsx; this markdown exists so the content is diffable and searchable in git.
+
+## Sheet 1: Karim Profile
+
+| প্রোফাইল | তথ্য |
+|---|---|
+| নাম | করিম সাহেব |
+| বয়স | ৪৮ বছর |
+| অবস্থান | গাজীপুর |
+| কৃষি অভিজ্ঞতা | প্রায় ২০ বছর |
+| মূল Product Role | করিম সাহেবের বাস্তব অভিজ্ঞতাকে replace করা নয়; তার অভিজ্ঞতার সঙ্গে scientific intelligence, data, memory, prediction ও real-time decision support যোগ করা। |
+
+| Farm Assets | সংখ্যা / ধরন |
+|---|---|
+| ধানের বড় জমি | ৩টি |
+| দেশি mixed-fish pond | ১টি |
+| Tilapia pond | ১টি |
+| বেগুনের ক্ষেত | ১টি |
+| টমেটোর ক্ষেত | ১টি |
+| মোট tracked farm assets | ৭টি |
+
+**বাস্তব Context:** করিম সাহেব beginner farmer নন। তিনি দীর্ঘদিনের অভিজ্ঞতায় জমি, ফসল, পানি ও আবহাওয়ার অনেক কিছু চোখে দেখে আন্দাজ করতে পারেন। কিন্তু একই সময়ে weather forecast, soil condition, previous-year data, disease pattern, market price, input cost এবং future risk একসাথে analyse করা কঠিন। Agro Agent তাই তার জ্ঞানকে replace করবে না; বরং তার ২০ বছরের কৃষি অভিজ্ঞতার ওপর একটি scientific intelligence layer হিসেবে কাজ করবে।
+
+## Sheet 2: Capability Matrix — 31 Real-Life Scenarios
+
+| # | সমস্যার ধরন | করিম সাহেবের বাস্তব সমস্যা ও প্রশ্ন | Agent কীভাবে সমস্যাটা ধরবে ও কী করবে | প্রয়োজনীয় দক্ষতা / Data |
+|---|---|---|---|---|
+| 1 | ধান: একই জাত, কিন্তু এক জমিতে growth খারাপ | তিনটা জমিতেই একই সময়ে একই জাতের ধান লাগিয়েছেন। কিন্তু উত্তর পাশের জমিতে গাছ তুলনামূলক খাটো, পাতার রং হালকা এবং কিছু জায়গায় growth uneven। অন্য দুই জমি ভালো। করিম সাহেব জানেন এই জমিটাতে গত বছরও ফলন একটু কম হয়েছিল। | Agent প্রথমে তিন plot-এর history compare করবে। একই treatment হলেও জমিভেদে soil, drainage ও previous crop আলাদা কি না দেখবে। ছবি চাইবে, affected area map করতে বলবে, প্রয়োজনে soil test suggest করবে। এরপর একাধিক সম্ভাব্য কারণকে probability অনুযায়ী সাজাবে। | Plot Memory, Soil Science, Drainage Analysis, Crop Nutrition, Comparative Reasoning, Geo-data |
+| 2 | ধান: সার দেওয়ার সঠিক সময় নিয়ে দ্বিধা | ধানের রং একটু ফ্যাকাশে, top-dressing-এর সময়, শ্রমিকও পাওয়া গেছে। কিন্তু forecast বলছে ২৪–৪৮ ঘণ্টার মধ্যে ভারী বৃষ্টি হতে পারে। | Agent crop age, field water level, soil condition, previous fertilizer application, rainfall probability/intensity এবং labour availability একসাথে দেখবে। Actionable timing window দেবে এবং পরিস্থিতি বদলালে timeline update করবে। | Weather Forecast, Nutrient Scheduling, Crop-stage Intelligence, Field Water Status, Task Planning |
+| 3 | ধান: রোগ নাকি nutrient deficiency | কয়েকটা patch-এ পাতায় বাদামি/লালচে দাগ। একজন পাশের কৃষক বলছে fungal disease, fertilizer dealer বলছে potash deficiency। | Agent leaf close-up, পুরো গাছ, affected patch এবং healthy area-এর comparative image চাইবে। symptom pattern, crop stage, recent weather, fertilizer history মিলিয়ে differential diagnosis তৈরি করবে। Confidence কম হলে field/lab test বা expert confirmation চাইবে। | Visual Diagnosis, Plant Pathology, Nutrient Diagnosis, Explainable AI, Confidence Scoring |
+| 4 | ধান: অল্প পোকা দেখেই বিষ দেব কি না | জমির এক পাশে কিছু পোকা দেখা যাচ্ছে। এখনো পুরো field আক্রান্ত না। | Agent representative sampling-এ guide করবে। Pest type, infestation density, crop stage এবং economic loss risk দেখে intervention threshold evaluate করবে। Necessary না হলে monitoring plan দেবে। | Entomology, IPM, Pest Threshold Models, Sampling Guidance, Economic Decision Support |
+| 5 | ধান: রোগ হওয়ার আগেই risk বুঝতে চাওয়া | গত বছর একই জমিতে শীষ বের হওয়ার কাছাকাছি সময়ে রোগ হয়েছিল। এবার এখনো symptom নেই, কিন্তু কয়েকদিন ধরে আর্দ্রতা ও বৃষ্টি বেশি। | Agent গত বছরের disease date, crop stage, temperature, humidity/rainfall এবং current variety মিলিয়ে risk trend বের করবে। Risk elevated হলে inspection frequency বাড়াবে এবং proactive alert দেবে। | Historical Pattern Recognition, Weather–Disease Model, Crop-stage Tracking, Predictive Risk |
+| 6 | ধান: harvest নিয়ে খুব costly decision | ধান প্রায় পেকে গেছে। আরও ৫ দিন রাখলে grain filling ভালো হবে, কিন্তু forecast-এ বৃষ্টি/ঝড়ের সম্ভাবনা। | Agent maturity evidence চাইবে, weather window, labour/machine availability, lodging risk ও expected yield-quality trade-off compare করবে। দুটি scenario দেখাবে, নির্দেশ দেবে না। | Harvest Science, Weather Risk, Scenario Modeling, Yield/Quality Optimization |
+| 7 | বেগুন: ফল ও ডগায় পোকা বারবার ফিরে আসছে | কয়েক দফা treatment করেছেন, attack কমে আবার ফিরে আসছে। একই ওষুধ বারবার দিয়ে টাকা নষ্ট করছেন কিনা, resistance তৈরি হয়েছে কিনা ভয়। | Agent previous treatment dates, active ingredient/category, response duration, infestation trend, sanitation history দেখবে। Pest cycle ও IPM perspective থেকে root cause explain করবে। | Pest Lifecycle Intelligence, Treatment Memory, Resistance Awareness, IPM, Outcome Tracking |
+| 8 | বেগুন: কয়েকটা গাছ হঠাৎ ঢলে পড়া | গতকালও ভালো ছিল, আজ কয়েকটা গাছ ঢলে পড়েছে। মাটিতে আর্দ্রতা আছে, আশেপাশের গাছ healthy। | Agent শুধু wilt label দেবে না। Day/night recovery হচ্ছে কি না, stem/root condition, vascular discoloration, soil moisture, disease history জানতে চাইবে। Contagious risk হলে isolation/removal ও monitoring radius দেবে। | Plant Pathology, Wilt Differential Diagnosis, Root/Stem Vision, Disease Containment |
+| 9 | বেগুন: রোগ দ্রুত ছড়িয়ে পড়বে কি না | ৩ দিন আগে ২–৩টা গাছে symptom, আজ ১০–১৫টা গাছে। গরম-আর্দ্র আবহাওয়া। | Agent affected plant count over time দিয়ে simple outbreak curve তৈরি করবে। Weather, field density, irrigation route ও disease type অনুযায়ী spread risk estimate করবে। Urgency score দেবে। | Disease Epidemiology, Trend Detection, Risk Projection, Weather Context |
+| 10 | টমেটো: নিচের পাতা হলুদ—স্বাভাবিক নাকি বিপদ | নিচের কয়েক সারির পাতা হলুদ, উপরের নতুন growth ভালো। Normal maturity, nitrogen issue, root stress নাকি disease শুরু বোঝা যাচ্ছে না। | Agent plant age, fruiting stage, yellowing pattern, recent irrigation/fertilizer, root-zone condition এবং image compare করবে। Normal ageing বনাম systemic problem distinguish করবে। | Crop Physiology, Nutrient Diagnosis, Visual Pattern Recognition |
+| 11 | টমেটো: ফলের নিচে কালো দাগ দেখে সবাই 'ওষুধ' বলছে | কিছু টমেটোর নিচের অংশ কালো/দেবে যাচ্ছে। দোকানদার pesticide/fungicide দিতে বলেছে। | Agent physiological disorder বনাম pathogen differentiate করবে। Irrigation consistency, moisture fluctuation, crop nutrition ও fruit pattern check করবে। Unnecessary pesticide avoid করার যুক্তি explain করবে। | Plant Physiology, Irrigation Analysis, Nutrient Availability, False-treatment Prevention |
+| 12 | টমেটো: গরমের পরে বৃষ্টি, ফল ফেটে যাচ্ছে | কয়েকদিন মাটি শুকনো, পরে হঠাৎ ভারী বৃষ্টি। অনেক mature fruit crack করছে। | Agent past moisture pattern ও forecast দেখে water fluctuation identify করবে। Stable moisture-maintenance strategy ও harvest priority suggest করবে। | Irrigation Intelligence, Weather Forecasting, Fruit Physiology, Dynamic Scheduling |
+| 13 | টমেটো: whitefly + leaf curl, কিন্তু কারণ নিশ্চিত নয় | সাদা মাছি বেড়েছে, পাশাপাশি নতুন পাতা কুঁকড়ে যাচ্ছে ও growth কম। | Agent vector population + symptom distribution + image/video + neighbouring plant condition analyse করবে। Suspicious plants identify, monitoring/isolation priority এবং high-risk হলে escalation করবে। | Entomology, Plant Virology Awareness, Computer Vision, Disease Spread Risk |
+| 14 | Mixed pond: ভোরে মাছ ওপরে উঠে হাঁসফাঁস করছে | সকালে মাছ পানির ওপরে মুখ তুলছে, বেলা বাড়লে স্বাভাবিক হয়। কয়েকদিন আকাশ মেঘলা, পানির রং গাঢ় সবুজ। | Agent এটাকে high-priority water-quality event হিসেবে ধরবে। DO, temperature, water colour, organic load, recent rain, feed history জানতে চাইবে। Immediate risk mitigation আগে, definitive diagnosis পরে। | Aquaculture Emergency Triage, Dissolved Oxygen Knowledge, Water Quality, Weather Integration |
+| 15 | Mixed pond: মাছ খাওয়া কমিয়েছে কিন্তু কোনো obvious disease নেই | তিনদিন ধরে feed কম খাচ্ছে, mortality/lesion নেই। পানি একটু ঘোলাটে। | Agent blind treatment বন্ধ করবে। DO/pH/ammonia/temperature, feed quantity, feeding time, weather and recent pond inputs check করবে। তারপর cause-specific action দেবে। | Fish Behaviour, Water Chemistry, Feeding Analytics, Diagnostic Sequencing |
+| 16 | Cross-farm problem: ক্ষেতের chemical পুকুরে গেছে কি না | বেগুন ক্ষেতে spray দেওয়ার কয়েক ঘণ্টা পর বৃষ্টি, drainage water পাশের mixed pond-এর দিকে গেছে। পরদিন মাছের behaviour unusual। | Master Agent field treatment record ও pond event timeline connect করবে। Chemical type, rainfall, drainage path, fish symptom timing analyse করে exposure risk estimate করবে। Serious হলে rapid escalation। | Cross-Asset Memory, Event Correlation, Farm Mapping, Toxicology Awareness, Risk Escalation |
+| 17 | Mixed pond: এক species ভালো, অন্য species growth কম | একই pond-এ mixed culture, কিছু species expected size-এ, অন্যগুলো ছোট। | Agent species-specific growth record, stocking ratio, feeding zone, pond productivity, size sampling compare করবে। Root cause rank করবে। | Polyculture Management, Growth Modeling, Stocking Analysis, Feed Management |
+| 18 | Tilapia: অনেক feed খাচ্ছে, কিন্তু profit হচ্ছে না | Feed bill বাড়ছে কিন্তু weight gain proportional না, রোগ চোখে পড়ছে না। | Agent weekly sample weight, feed input, mortality, stocking estimate, water quality দিয়ে growth/FCR trend analyse করবে। কোথায় efficiency leak হচ্ছে দেখাবে। | Aquaculture Analytics, FCR Modeling, Water Quality, Population Estimation |
+| 19 | Tilapia: pond-এ অতিরিক্ত ছোট মাছ | কয়েক মাস পর অনেক ছোট tilapia দেখা যাচ্ছে, market-size fish-এর growth slow। Uncontrolled reproduction সন্দেহ। | Agent sample size distribution চাইবে, population structure estimate করবে এবং original stocking বনাম new recruits distinguish করার চেষ্টা করবে। | Population Dynamics, Sampling, Tilapia Biology, Production Optimization |
+| 20 | Tilapia: এখন harvest নাকি আরও feed দেব | মাছ marketable, আরও ৩০ দিন feed দিলে size বাড়বে কিন্তু feed price বেশি, market price অনিশ্চিত, disease/weather risk আছে। | Agent additional feed + expected weight gain + mortality risk + market-price scenario compare করবে। Conservative/base/optimistic scenario দেখাবে। | Farm Economics, FCR, Market Intelligence, Scenario Forecasting |
+| 21 | Farm-wide labour crisis | মাত্র ৪ জন শ্রমিক পাওয়া গেছে, একই দিনে ৪টা asset-এ urgent কাজ। সব করা যাবে না। | Agent urgency × reversibility × financial exposure × weather window দিয়ে tasks rank করবে। "সব জরুরি" বললে চলবে না। | Operations Research, Priority Engine, Financial Risk, Multi-Agent Orchestration |
+| 22 | Limited cash: কোথায় টাকা ঢালবেন | হাতে ৩০ হাজার টাকা, ধানের সার/tilapia feed/বেগুন treatment—তিনটাই জরুরি। | Agent expected loss avoided, crop/fish stage, urgency এবং alternative options দিয়ে allocation plan বানাবে। | Farm Finance, Opportunity Cost, Risk-adjusted Allocation |
+| 23 | Personal financial crisis | দেড় মাসের মধ্যে ৮০ হাজার টাকা দরকার, regular farm cycle-এ বড় cash inflow পরে। Premature harvest এড়াতে চান। | Agent crop harvest windows, vegetable sale forecast, pond biomass, input obligations এবং expected selling price দিয়ে 45-day farm cash-flow projection বানাবে। | Cash-flow Forecasting, Asset Portfolio Intelligence, Market Pricing, Harvest Prediction |
+| 24 | Crop choice: দাম বেশি মানেই লাভ বেশি নয় | আগের season tomato price ভালো শুনে চাষ করে market flooded হয়ে price পড়ে গিয়েছিল। | Agent soil suitability, planting window, input cost, expected yield, disease risk, market volatility, farmer skill and crop duration compare করবে। | Crop Suitability, Market Forecasting, Risk-adjusted Profit Modeling |
+| 25 | Market timing: আজ বিক্রি না অপেক্ষা | টমেটো harvest-ready, আজ দাম কম, কয়েকদিনে বাড়তেও পারে, কিন্তু spoilage risk আছে, storage সীমিত। | Agent perishability + expected price movement + weather + transport + storage capacity দিয়ে "sell now / stagger / wait" options compare করবে। | Market Intelligence, Post-Harvest Science, Price Forecasting, Logistics |
+| 26 | কোন বাজারে বিক্রি লাভজনক | স্থানীয় আড়তে দাম কম, দূরের বাজারে বেশি কিন্তু ভাড়া/loading/commission/wastage/সময় লাগে। | Agent net realization হিসাব করবে—প্রতি কেজিতে সব cost বাদ দিয়ে কোথায় actual লাভ বেশি। | Market Data, Transport Cost, Commission/Wastage Modeling |
+| 27 | Weather event-এর আগে পুরো farm risk | ভারী বৃষ্টির forecast, ৭টা asset-এর সমস্যা আলাদা (crack/rot, disease, lodging/drainage, pond overflow/DO shift)। | Master Agent প্রতিটি asset-এর vulnerability scan করে ranked risk map দেবে। Pre-event checklist তৈরি করবে। | Portfolio Risk Engine, Weather Intelligence, Cross-domain Reasoning |
+| 28 | Farm inspection priority | সব জমি/পুকুর প্রতিদিন দেখা সম্ভব না, আজ হাতে মাত্র ২ ঘণ্টা। কিছু asset-এর latest image পুরনো। | Agent stale data + known risk + crop stage + weather + financial value অনুযায়ী visit priority বলবে (e.g. "আজ আগে Pond 1 → Begun plot → Rice 2 দেখুন")। | Inspection Optimization, Risk Scoring, Memory Freshness Tracking |
+| 29 | Repeated mistake detection | ২০ বছরের farmer হলেও নিজের behavioural pattern থাকতে পারে—late intervention, অতিরিক্ত feed, একই chemical reliance, late selling। | Agent multiple seasons-এর decision → outcome relationship analyse করবে। Fault ধরবে না; কত টাকা/ফলনে impact হয়েছে এবং alternative behaviour কী হতে পারত দেখাবে। | Longitudinal Analytics, Behavioural Pattern Detection, Causal Reasoning |
+| 30 | Agent নিজে risk আবিষ্কার করেছে | কোনো প্রশ্ন করেননি, কিন্তু ১২ দিন আগের treatment-এর follow-up image আসেনি, tilapia feeding কমেছে, আগামীকাল heavy rain। | আলাদা events একত্র করে Agent নিজে priority message করবে ("আজ তিনটা বিষয় আপনার দেখা দরকার") এবং একে একে action নেবে। | Proactive Monitoring, Event Engine, Persistent Memory, Multi-Agent Synthesis |
+| 31 | Ultimate farm decision | "সব জমি-পুকুরের অবস্থা, সামনে weather, আমার হাতে টাকা আর বাজার—সব মিলিয়ে বলো আগামী সাত দিনে আমার সবচেয়ে বড় তিনটা ভয় কী?" | Agent শুধু summary করবে না। Top risks rank করবে, evidence দেখাবে, financial impact estimate করবে, 7-day action plan বানাবে এবং uncertain বিষয় আলাদা করবে। | Master Agent, Agronomy + Aquaculture + Weather + Market + Finance + Risk Reasoning |
+
+## Sheet 3: Product Insight & Intelligence Flow
+
+**Core Product Insight:** করিম সাহেব অধিকাংশ সময় শুধু 'রোগের নাম কী?' জানতে চাইছেন না। তিনি আসলে জানতে চাইছেন—'এখন আমি কী decision নেব?'
+
+এই distinction-টাই Agro Agent-এর মূল শক্তি। Generic search বা কৃষি article সাধারণ তথ্য দিতে পারে; Agro Agent-এর কাজ হবে করিম সাহেবের নির্দিষ্ট জমি/পুকুর, আগের history, আজকের condition, weather, market ও risk একসাথে বুঝে actionable decision দেওয়া।
+
+**Recommended Intelligence Flow:**
+
+```
+Observe → Understand Context → Ask → Verify → Diagnose → Estimate Risk → Recommend → Explain → Schedule → Follow-up → Learn
+```
+
+**Why "Learn" matters:** আজকের problem, decision, treatment, result এবং follow-up outcome আগামী মৌসুমে Agent-এর farm-specific memory হবে। এই cumulative learning-এর মাধ্যমে Agent সময়ের সাথে করিম সাহেবের জমি-পুকুরকে আরও ভালোভাবে বুঝবে এবং generic agricultural chatbot থেকে একটি trusted, persistent farm companion-এ পরিণত হবে।

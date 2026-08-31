@@ -15,6 +15,18 @@
 | notification-service | 8085 | notification_db | Done  |
 | api-gateway        | 8080  | —            | Done     |
 
+## Frontend
+| UI                  | URL                        | Tech            | Status |
+|---------------------|----------------------------|-----------------|--------|
+| Farmer Chat UI      | http://localhost:8080/     | HTML/CSS/JS     | Done   |
+
+### Farmer Chat UI Details
+- Served as a static file: `api-gateway/src/main/resources/static/index.html`
+- Calls `POST /api/v1/advisor/advice` through the api-gateway (same origin — no CORS needed)
+- Query types: GENERAL, CROP_RECOMMENDATION, PEST_CONTROL, WEATHER_ALERT, PLANTING_SCHEDULE, IRRIGATION_ADVICE
+- Features: topic dropdown, typing indicator, example question chips, Enter to send
+- ai-advisor route timeout overridden to 60s (Ollama can be slow)
+
 ## Architecture Rules (apply to every service)
 
 ### Entity Design
@@ -61,3 +73,21 @@
 - Always include: `spring-boot-starter-web`, `spring-boot-starter-data-jpa`,
   `spring-boot-starter-validation`, `mysql-connector-j` (runtime),
   `spring-cloud-starter-netflix-eureka-client`, `lombok` (optional)
+
+## Roadmap
+
+The services above are the CRUD/infra foundation actually built and shipped. The long-term
+product vision is a much larger conversational "Agro Agent" — voice-first, multi-modal,
+farm-memory-driven advisory — captured in two PRD documents under `docs/prd/`:
+
+- `docs/prd/agro-agent-core-feature-matrix.md` — 49-feature matrix tagged by priority tier
+  (MVP Core → MVP → MVP Domain → Phase 2 → Advanced → Future/B2G).
+- `docs/prd/agro-agent-karim-saheb-capability-matrix.md` — a persona-driven deep-dive (an
+  anchor farmer with 7 tracked assets: 3 rice plots, 2 ponds, eggplant + tomato fields) with
+  31 real-world reasoning scenarios and the intended intelligence flow: Observe → Understand
+  Context → Ask → Verify → Diagnose → Estimate Risk → Recommend → Explain → Schedule →
+  Follow-up → Learn.
+
+Do not treat items in the roadmap as implemented — only the Services & Ports and Frontend
+tables above reflect what's actually built. Xlsx originals live alongside the markdown
+extractions in `docs/prd/` for reference.
