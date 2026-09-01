@@ -11,10 +11,10 @@
     </parent>
 
     <groupId>com.smartagriculture</groupId>
-    <artifactId>ai-advisor-service</artifactId>
+    <artifactId>farm-asset-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>ai-advisor-service</name>
-    <description>AI Advisor Service - Smart Agriculture Microservices</description>
+    <name>farm-asset-service</name>
+    <description>Farm Asset Service - Smart Agriculture Microservices</description>
 
     <properties>
         <java.version>21</java.version>
@@ -29,16 +29,16 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Spring Data JPA -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
         <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-
-        <!-- Data JPA (conversation / farm memory persistence) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
         <!-- MySQL Driver -->
@@ -52,12 +52,6 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
-        </dependency>
-
-        <!-- OpenFeign (inter-service HTTP calls) -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
 
         <!-- Lombok -->

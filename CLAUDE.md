@@ -10,8 +10,9 @@
 | service-registry   | 8761  | —            | Done     |
 | farmer-service     | 8081  | farmer_db    | Done     |
 | crop-service       | 8082  | crop_db      | Done     |
+| farm-asset-service | 8086  | farm_asset_db | Done    |
 | weather-service    | 8083  | weather_db   | Done     |
-| ai-advisor-service | 8084  | —            | Done     |
+| ai-advisor-service | 8084  | ai_advisor_db | Done    |
 | notification-service | 8085 | notification_db | Done  |
 | api-gateway        | 8080  | —            | Done     |
 

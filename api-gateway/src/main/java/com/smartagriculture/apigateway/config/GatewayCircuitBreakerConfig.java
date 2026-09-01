@@ -39,8 +39,9 @@ public class GatewayCircuitBreakerConfig {
 
     @Bean
     public Customizer<ReactiveResilience4JCircuitBreakerFactory> aiAdvisorCircuitBreakerCustomizer() {
-        // Ollama is inherently slow (30-60s) — threshold must exceed the 60s route
-        // timeout so normal LLM responses never count as slow calls
+        // qwen3:8b is a "thinking" model — on CPU-only inference a reply can take minutes,
+        // especially once the prompt includes farm/crop/weather/memory context. Threshold
+        // must exceed the 240s route timeout so normal LLM responses never count as slow calls.
         CircuitBreakerConfig aiAdvisorConfig = CircuitBreakerConfig.custom()
                 .slidingWindowSize(10)
                 .minimumNumberOfCalls(5)
@@ -48,12 +49,12 @@ public class GatewayCircuitBreakerConfig {
                 .waitDurationInOpenState(Duration.ofSeconds(30))
                 .permittedNumberOfCallsInHalfOpenState(3)
                 .slowCallRateThreshold(100)
-                .slowCallDurationThreshold(Duration.ofSeconds(65))
+                .slowCallDurationThreshold(Duration.ofSeconds(605))
                 .build();
 
-        // Must be > 60s route timeout so Resilience4j never cancels a valid Ollama response
+        // Must be > 600s route timeout so Resilience4j never cancels a valid Ollama response
         TimeLimiterConfig aiAdvisorTimeLimiter = TimeLimiterConfig.custom()
-                .timeoutDuration(Duration.ofSeconds(65))
+                .timeoutDuration(Duration.ofSeconds(605))
                 .build();
 
         return factory -> factory.configure(builder -> builder

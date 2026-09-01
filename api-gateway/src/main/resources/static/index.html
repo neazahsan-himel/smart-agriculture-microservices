@@ -213,6 +213,22 @@
 
         .message.farmer .meta { text-align: right; }
 
+        .badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-right: 6px;
+            text-transform: uppercase;
+        }
+
+        .badge.risk-low, .badge.confidence-high      { background: #e8f5e9; color: #2e7d32; }
+        .badge.risk-medium, .badge.confidence-medium { background: #fff8e1; color: #f57f17; }
+        .badge.risk-high, .badge.confidence-low      { background: #ffebee; color: #c62828; }
+        .badge.risk-critical                         { background: #b71c1c; color: white; }
+
         /* ── Typing indicator ── */
         .typing-indicator {
             display: flex;
@@ -376,6 +392,20 @@
     const sendBtn    = document.getElementById('send-btn');
     const queryType  = document.getElementById('query-type');
     let   isWaiting  = false;
+    let   conversationId = null;
+    // Demo-only anonymous farmer id for this browser tab; a real login flow would replace this.
+    const farmerId = (() => {
+        try {
+            let id = sessionStorage.getItem('demoFarmerId');
+            if (!id) {
+                id = 'demo-' + crypto.randomUUID();
+                sessionStorage.setItem('demoFarmerId', id);
+            }
+            return id;
+        } catch (e) {
+            return 'demo-anonymous';
+        }
+    })();
 
     // Auto-resize textarea
     input.addEventListener('input', () => {
@@ -409,13 +439,18 @@
         const indicator = showTyping();
         setWaiting(true);
 
-        fetch('/api/v1/advisor/advice', {
+        const isFirstMessage = !conversationId;
+        const url = isFirstMessage
+            ? '/api/v1/advisor/conversations'
+            : `/api/v1/advisor/conversations/${conversationId}/messages`;
+        const body = isFirstMessage
+            ? { farmerId: farmerId, queryType: queryType.value, message: question }
+            : { message: question };
+
+        fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                question:  question,
-                queryType: queryType.value
-            })
+            body: JSON.stringify(body)
         })
         .then(res => {
             if (!res.ok) {
@@ -427,7 +462,9 @@
         })
         .then(data => {
             removeTyping(indicator);
-            appendMessage('ai', data.advice || 'No advice returned.');
+            conversationId = data.id || conversationId;
+            const lastAgentMessage = (data.messages || []).filter(m => m.sender === 'AGENT').pop();
+            appendMessage('ai', lastAgentMessage ? lastAgentMessage.content : 'No advice returned.', false, data.latestCase);
         })
         .catch(err => {
             removeTyping(indicator);
@@ -438,7 +475,7 @@
         });
     }
 
-    function appendMessage(role, text, isError = false) {
+    function appendMessage(role, text, isError = false, diagnosticCase = null) {
         const wrapper = document.createElement('div');
         wrapper.className = `message ${role}`;
 
@@ -454,7 +491,21 @@
 
         const meta = document.createElement('div');
         meta.className = 'meta';
-        meta.textContent = formatTime(new Date());
+        if (diagnosticCase && diagnosticCase.riskLevel) {
+            const riskBadge = document.createElement('span');
+            riskBadge.className = 'badge risk-' + diagnosticCase.riskLevel.toLowerCase();
+            riskBadge.textContent = 'Risk: ' + diagnosticCase.riskLevel;
+            meta.appendChild(riskBadge);
+        }
+        if (diagnosticCase && diagnosticCase.confidenceLevel) {
+            const confBadge = document.createElement('span');
+            confBadge.className = 'badge confidence-' + diagnosticCase.confidenceLevel.toLowerCase();
+            confBadge.textContent = 'Confidence: ' + diagnosticCase.confidenceLevel;
+            meta.appendChild(confBadge);
+        }
+        const timeSpan = document.createElement('span');
+        timeSpan.textContent = formatTime(new Date());
+        meta.appendChild(timeSpan);
 
         inner.appendChild(bubble);
         inner.appendChild(meta);

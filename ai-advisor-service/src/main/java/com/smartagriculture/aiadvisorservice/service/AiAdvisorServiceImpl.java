@@ -1,20 +1,15 @@
 package com.smartagriculture.aiadvisorservice.service;
 
 import com.smartagriculture.aiadvisorservice.client.OllamaApiClient;
-import com.smartagriculture.aiadvisorservice.client.CropServiceClient;
-import com.smartagriculture.aiadvisorservice.client.FarmerServiceClient;
-import com.smartagriculture.aiadvisorservice.client.WeatherServiceClient;
 import com.smartagriculture.aiadvisorservice.dto.AdvisorDto;
 import com.smartagriculture.aiadvisorservice.dto.external.CropSummary;
 import com.smartagriculture.aiadvisorservice.dto.external.FarmerResponse;
-import com.smartagriculture.aiadvisorservice.dto.external.PageResponse;
 import com.smartagriculture.aiadvisorservice.dto.external.WeatherSummary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,18 +32,16 @@ public class AiAdvisorServiceImpl implements AiAdvisorService {
             Base your advice strictly on the context provided (farmer profile, crop catalog, weather data).
             """;
 
-    private final FarmerServiceClient farmerServiceClient;
-    private final CropServiceClient cropServiceClient;
-    private final WeatherServiceClient weatherServiceClient;
+    private final ExternalContextFetcher contextFetcher;
     private final OllamaApiClient ollamaApiClient;
 
     @Override
     public AdvisorDto.Response getAdvice(AdvisorDto.Request request) {
         log.info("Getting advice for queryType={}, farmerId={}", request.getQueryType(), request.getFarmerId());
 
-        FarmerResponse farmer = fetchFarmer(request.getFarmerId());
-        List<CropSummary> crops = fetchCrops();
-        List<WeatherSummary> weatherRecords = fetchWeather();
+        FarmerResponse farmer = contextFetcher.fetchFarmer(request.getFarmerId());
+        List<CropSummary> crops = contextFetcher.fetchCrops();
+        List<WeatherSummary> weatherRecords = contextFetcher.fetchWeather();
 
         String effectiveCountryCode = resolveCountryCode(request, farmer);
         String effectiveRegion = resolveRegion(request, farmer);
@@ -66,38 +59,6 @@ public class AiAdvisorServiceImpl implements AiAdvisorService {
                 .region(effectiveRegion)
                 .generatedAt(LocalDateTime.now())
                 .build();
-    }
-
-    // ── Context Fetchers (graceful fallback on service unavailability) ─────────
-
-    private FarmerResponse fetchFarmer(String farmerId) {
-        if (farmerId == null || farmerId.isBlank()) return null;
-        try {
-            return farmerServiceClient.getFarmerById(farmerId);
-        } catch (Exception e) {
-            log.warn("Could not fetch farmer {}: {}", farmerId, e.getMessage());
-            return null;
-        }
-    }
-
-    private List<CropSummary> fetchCrops() {
-        try {
-            PageResponse<CropSummary> page = cropServiceClient.getCrops(0, 20, "name", "asc");
-            return page.getContent() != null ? page.getContent() : Collections.emptyList();
-        } catch (Exception e) {
-            log.warn("Could not fetch crops: {}", e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-    private List<WeatherSummary> fetchWeather() {
-        try {
-            PageResponse<WeatherSummary> page = weatherServiceClient.getWeatherRecords(0, 5, "recordedAt", "desc");
-            return page.getContent() != null ? page.getContent() : Collections.emptyList();
-        } catch (Exception e) {
-            log.warn("Could not fetch weather records: {}", e.getMessage());
-            return Collections.emptyList();
-        }
     }
 
     // ── Prompt Builder ────────────────────────────────────────────────────────

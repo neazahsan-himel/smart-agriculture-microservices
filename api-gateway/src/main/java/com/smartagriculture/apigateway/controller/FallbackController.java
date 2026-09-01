@@ -39,6 +39,11 @@ public class FallbackController {
         return Mono.just(buildFallback("notification-service"));
     }
 
+    @RequestMapping("/farm-asset-service")
+    public Mono<ResponseEntity<Map<String, Object>>> farmAssetServiceFallback() {
+        return Mono.just(buildFallback("farm-asset-service"));
+    }
+
     private ResponseEntity<Map<String, Object>> buildFallback(String serviceName) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());
