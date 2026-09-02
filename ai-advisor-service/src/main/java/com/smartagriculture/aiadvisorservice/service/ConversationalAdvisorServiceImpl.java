@@ -60,7 +60,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                 .status(Conversation.ConversationStatus.OPEN)
                 .build());
 
-        processTurn(conversation, request.getMessage());
+        processTurn(conversation, request.getMessage(), request.getImageBase64());
         return buildResponse(conversation);
     }
 
@@ -70,7 +70,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         Conversation conversation = conversationRepository.findByIdAndDeletedFalse(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
 
-        processTurn(conversation, request.getMessage());
+        processTurn(conversation, request.getMessage(), request.getImageBase64());
         return buildResponse(conversation);
     }
 
@@ -132,11 +132,17 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
 
     // ── Core turn pipeline ───────────────────────────────────────────────────
 
-    private void processTurn(Conversation conversation, String farmerMessage) {
+    private void processTurn(Conversation conversation, String farmerMessage, String imageBase64) {
+        boolean hasImage = imageBase64 != null && !imageBase64.isBlank();
+        String farmerContent = (farmerMessage == null || farmerMessage.isBlank())
+                ? (hasImage ? "(photo attached)" : farmerMessage)
+                : farmerMessage;
+
         messageRepository.save(Message.builder()
                 .conversationId(conversation.getId())
                 .sender(Message.Sender.FARMER)
-                .content(farmerMessage)
+                .content(farmerContent)
+                .imageBase64(hasImage ? imageBase64 : null)
                 .build());
 
         FarmerResponse farmer = contextFetcher.fetchFarmer(conversation.getFarmerId());
@@ -145,8 +151,9 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         List<FarmEvent> farmMemory = fetchFarmMemory(conversation);
         List<Message> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
 
-        String userMessage = buildUserMessage(conversation, farmer, crops, weather, farmMemory, history);
-        String rawReply = ollamaApiClient.getAdvice(PromptTemplates.CONVERSATION_SYSTEM_PROMPT, userMessage);
+        String userMessage = buildUserMessage(conversation, farmer, crops, weather, farmMemory, history, hasImage);
+        String rawReply = ollamaApiClient.getAdvice(PromptTemplates.CONVERSATION_SYSTEM_PROMPT, userMessage,
+                hasImage ? List.of(imageBase64) : List.of());
         AdvisoryResponseParser.ParsedAdvice parsed = responseParser.parse(rawReply);
 
         messageRepository.save(Message.builder()
@@ -155,7 +162,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                 .content(parsed.visibleText())
                 .build());
 
-        DiagnosticCase diagnosticCase = upsertDiagnosticCase(conversation, farmerMessage, parsed);
+        DiagnosticCase diagnosticCase = upsertDiagnosticCase(conversation, farmerContent, hasImage, parsed);
 
         farmEventRepository.save(FarmEvent.builder()
                 .farmerId(conversation.getFarmerId())
@@ -174,17 +181,19 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         return farmEventRepository.findTop5ByFarmerIdOrderByOccurredAtDesc(conversation.getFarmerId());
     }
 
-    private DiagnosticCase upsertDiagnosticCase(Conversation conversation, String latestFarmerMessage,
+    private DiagnosticCase upsertDiagnosticCase(Conversation conversation, String latestFarmerMessage, boolean hasImage,
                                                  AdvisoryResponseParser.ParsedAdvice parsed) {
         List<DiagnosticCase> open = diagnosticCaseRepository
                 .findByConversationIdAndStatusInOrderByCreatedAtDesc(conversation.getId(), OPEN_STATUSES);
+
+        String symptom = hasImage ? "[with photo] " + latestFarmerMessage : latestFarmerMessage;
 
         DiagnosticCase diagnosticCase = open.isEmpty()
                 ? DiagnosticCase.builder()
                     .conversationId(conversation.getId())
                     .farmerId(conversation.getFarmerId())
                     .farmAssetId(conversation.getFarmAssetId())
-                    .symptom(truncate(latestFarmerMessage, 1000))
+                    .symptom(truncate(symptom, 1000))
                     .status(DiagnosticCase.CaseStatus.OPEN)
                     .build()
                 : open.get(0);
@@ -239,7 +248,8 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     // ── Prompt Builder ───────────────────────────────────────────────────────
 
     private String buildUserMessage(Conversation conversation, FarmerResponse farmer, List<CropSummary> crops,
-                                     List<WeatherSummary> weather, List<FarmEvent> farmMemory, List<Message> history) {
+                                     List<WeatherSummary> weather, List<FarmEvent> farmMemory, List<Message> history,
+                                     boolean hasImage) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("Query Type: ").append(conversation.getTopic()).append("\n\n");
@@ -296,6 +306,10 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         history.forEach(m -> sb.append(m.getSender() == Message.Sender.FARMER ? "Farmer: " : "Agent: ")
                 .append(m.getContent()).append("\n"));
 
+        if (hasImage) {
+            sb.append(PromptTemplates.IMAGE_ANALYSIS_INSTRUCTION);
+        }
+
         return sb.toString();
     }
 
@@ -309,6 +323,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                         .id(m.getId())
                         .sender(m.getSender())
                         .content(m.getContent())
+                        .hasImage(m.getImageBase64() != null)
                         .createdAt(m.getCreatedAt())
                         .build())
                 .toList();

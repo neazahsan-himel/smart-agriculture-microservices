@@ -48,4 +48,14 @@ public final class PromptTemplates {
             - ESCALATE: YES only for high-risk, low-confidence, unusual, or toxic-chemical
               situations that should be routed to a human expert.
             """;
+
+    public static final String IMAGE_ANALYSIS_INSTRUCTION = """
+
+            == ATTACHED PHOTO ==
+            A photo was attached to the farmer's message above. Examine it for visible symptoms
+            (leaf spots, discoloration, wilting, pest presence, mold, insect damage, etc.) and
+            factor what you see into your diagnosis. If the photo is blurry, irrelevant, or shows
+            nothing diagnostic, say so explicitly and lower CONFIDENCE accordingly rather than
+            guessing.
+            """;
 }

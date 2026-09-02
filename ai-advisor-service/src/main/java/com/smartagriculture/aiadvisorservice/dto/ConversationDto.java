@@ -30,9 +30,11 @@ public class ConversationDto {
         @NotNull(message = "Query type is required")
         private AdvisorDto.QueryType queryType;
 
-        @NotBlank(message = "Message is required")
         @Size(max = 1000, message = "Message must not exceed 1000 characters")
         private String message;
+
+        @Size(max = 7_000_000, message = "Image is too large")
+        private String imageBase64;
     }
 
     @Data
@@ -41,9 +43,11 @@ public class ConversationDto {
     @AllArgsConstructor
     public static class MessageRequest {
 
-        @NotBlank(message = "Message is required")
         @Size(max = 1000, message = "Message must not exceed 1000 characters")
         private String message;
+
+        @Size(max = 7_000_000, message = "Image is too large")
+        private String imageBase64;
     }
 
     @Data
@@ -70,6 +74,7 @@ public class ConversationDto {
         private String id;
         private Message.Sender sender;
         private String content;
+        private boolean hasImage;
         private LocalDateTime createdAt;
     }
 

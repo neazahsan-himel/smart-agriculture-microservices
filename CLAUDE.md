@@ -19,7 +19,7 @@
 ## Frontend
 | UI                  | URL                        | Tech            | Status |
 |---------------------|----------------------------|-----------------|--------|
-| Farmer Chat UI      | http://localhost:8080/     | HTML/CSS/JS     | Done   |
+| Farmer Chat UI      | http://localhost:<br/>8080/     | HTML/CSS/JS     | Done   |
 
 ### Farmer Chat UI Details
 - Served as a static file: `api-gateway/src/main/resources/static/index.html`

@@ -32,8 +32,12 @@ public class Message {
     @Column(nullable = false)
     private Sender sender;
 
-    @Column(nullable = false, length = 2000)
+    @Column(length = 2000)
     private String content;
+
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String imageBase64;
 
     @CreationTimestamp
     @Column(updatable = false)

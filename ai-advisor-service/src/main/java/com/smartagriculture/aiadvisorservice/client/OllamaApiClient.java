@@ -1,6 +1,7 @@
 package com.smartagriculture.aiadvisorservice.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.smartagriculture.aiadvisorservice.exception.ExternalServiceException;
 import lombok.AllArgsConstructor;
@@ -29,15 +30,25 @@ public class OllamaApiClient {
     @Value("${ollama.api.model}")
     private String model;
 
+    @Value("${ollama.api.vision-model}")
+    private String visionModel;
+
     private final RestTemplate restTemplate;
 
     public String getAdvice(String systemPrompt, String userMessage) {
+        return getAdvice(systemPrompt, userMessage, List.of());
+    }
+
+    public String getAdvice(String systemPrompt, String userMessage, List<String> images) {
         String url = baseUrl + "/api/chat";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        OllamaRequest request = new OllamaRequest(model, systemPrompt, userMessage);
+        boolean hasImages = images != null && !images.isEmpty();
+        String effectiveModel = hasImages ? visionModel : model;
+        OllamaRequest request = new OllamaRequest(effectiveModel, systemPrompt, userMessage,
+                hasImages ? images : null);
         HttpEntity<OllamaRequest> entity = new HttpEntity<>(request, headers);
 
         try {
@@ -74,11 +85,11 @@ public class OllamaApiClient {
         private final List<Message> messages;
         private final boolean stream = false;
 
-        OllamaRequest(String model, String systemPrompt, String userMessage) {
+        OllamaRequest(String model, String systemPrompt, String userMessage, List<String> userImages) {
             this.model = model;
             this.messages = List.of(
-                    new Message("system", systemPrompt),
-                    new Message("user", userMessage)
+                    new Message("system", systemPrompt, null),
+                    new Message("user", userMessage, userImages)
             );
         }
 
@@ -87,6 +98,8 @@ public class OllamaApiClient {
         static class Message {
             private final String role;
             private final String content;
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+            private final List<String> images;
         }
     }
 
