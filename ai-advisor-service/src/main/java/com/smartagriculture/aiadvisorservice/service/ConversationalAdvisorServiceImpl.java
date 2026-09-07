@@ -53,7 +53,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     public ConversationDto.Response startConversation(ConversationDto.StartRequest request) {
         log.info("Starting conversation for farmerId={}, queryType={}", request.getFarmerId(), request.getQueryType());
 
-        Conversation conversation = conversationRepository.save(Conversation.builder()
+        Conversation conversation = conversationRepository.saveAndFlush(Conversation.builder()
                 .farmerId(request.getFarmerId())
                 .farmAssetId(request.getFarmAssetId())
                 .topic(request.getQueryType())
@@ -95,7 +95,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
 
         diagnosticCase.setOutcome(outcome);
         diagnosticCase.setStatus(DiagnosticCase.CaseStatus.RESOLVED);
-        DiagnosticCase saved = diagnosticCaseRepository.save(diagnosticCase);
+        DiagnosticCase saved = diagnosticCaseRepository.saveAndFlush(diagnosticCase);
 
         farmEventRepository.save(FarmEvent.builder()
                 .farmerId(saved.getFarmerId())

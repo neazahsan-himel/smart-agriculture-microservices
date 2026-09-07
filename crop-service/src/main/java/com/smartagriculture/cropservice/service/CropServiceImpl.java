@@ -26,7 +26,7 @@ public class CropServiceImpl implements CropService {
         if (cropRepository.existsByNameAndVarietyAndDeletedFalse(request.getName(), request.getVariety())) {
             throw new DuplicateResourceException(duplicateMessage(request.getName(), request.getVariety()));
         }
-        return mapToResponse(cropRepository.save(mapToEntity(request)));
+        return mapToResponse(cropRepository.saveAndFlush(mapToEntity(request)));
     }
 
     @Override
@@ -72,7 +72,7 @@ public class CropServiceImpl implements CropService {
         if (request.getCountryCode() != null)          crop.setCountryCode(request.getCountryCode());
         if (request.getRegion() != null)               crop.setRegion(request.getRegion());
 
-        return mapToResponse(cropRepository.save(crop));
+        return mapToResponse(cropRepository.saveAndFlush(crop));
     }
 
     @Override

@@ -27,7 +27,7 @@ public class FarmerServiceImpl implements FarmerService {
                 && farmerRepository.existsByPhoneNumberAndDeletedFalse(request.getPhoneNumber())) {
             throw new DuplicateResourceException("Phone number already registered: " + request.getPhoneNumber());
         }
-        return mapToResponse(farmerRepository.save(mapToEntity(request)));
+        return mapToResponse(farmerRepository.saveAndFlush(mapToEntity(request)));
     }
 
     @Override
@@ -75,7 +75,7 @@ public class FarmerServiceImpl implements FarmerService {
         if (request.getDeviceType() != null)        farmer.setDeviceType(request.getDeviceType());
         if (request.getAiConsentGiven() != null)    farmer.setAiConsentGiven(request.getAiConsentGiven());
 
-        return mapToResponse(farmerRepository.save(farmer));
+        return mapToResponse(farmerRepository.saveAndFlush(farmer));
     }
 
     @Override

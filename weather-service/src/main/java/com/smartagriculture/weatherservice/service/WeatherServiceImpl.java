@@ -45,7 +45,7 @@ public class WeatherServiceImpl implements WeatherService {
                 .dataSource(request.getDataSource())
                 .build();
 
-        return toResponse(weatherRepository.save(record));
+        return toResponse(weatherRepository.saveAndFlush(record));
     }
 
     @Override
@@ -93,7 +93,7 @@ public class WeatherServiceImpl implements WeatherService {
         if (request.getUvIndex() != null)            record.setUvIndex(request.getUvIndex());
         if (request.getDataSource() != null)         record.setDataSource(request.getDataSource());
 
-        return toResponse(weatherRepository.save(record));
+        return toResponse(weatherRepository.saveAndFlush(record));
     }
 
     @Override

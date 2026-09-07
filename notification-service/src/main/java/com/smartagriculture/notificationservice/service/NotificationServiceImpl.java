@@ -30,7 +30,7 @@ public class NotificationServiceImpl implements NotificationService {
             throw new DuplicateResourceException(
                     "A PENDING notification with the same title, type, and channel already exists for this farmer");
         }
-        return mapToResponse(notificationRepository.save(mapToEntity(request)));
+        return mapToResponse(notificationRepository.saveAndFlush(mapToEntity(request)));
     }
 
     @Override
@@ -68,7 +68,7 @@ public class NotificationServiceImpl implements NotificationService {
         if (request.getChannel() != null)  notification.setChannel(request.getChannel());
         if (request.getPriority() != null) notification.setPriority(request.getPriority());
 
-        return mapToResponse(notificationRepository.save(notification));
+        return mapToResponse(notificationRepository.saveAndFlush(notification));
     }
 
     @Override
@@ -89,7 +89,7 @@ public class NotificationServiceImpl implements NotificationService {
             throw new IllegalStateException("Only PENDING notifications can be marked as SENT");
         }
         notification.setStatus(Notification.NotificationStatus.SENT);
-        return mapToResponse(notificationRepository.save(notification));
+        return mapToResponse(notificationRepository.saveAndFlush(notification));
     }
 
     @Override
@@ -101,7 +101,7 @@ public class NotificationServiceImpl implements NotificationService {
             throw new IllegalStateException("Only SENT notifications can be marked as READ");
         }
         notification.setStatus(Notification.NotificationStatus.READ);
-        return mapToResponse(notificationRepository.save(notification));
+        return mapToResponse(notificationRepository.saveAndFlush(notification));
     }
 
     // ── Private Helpers ───────────────────────────────────────────────────────

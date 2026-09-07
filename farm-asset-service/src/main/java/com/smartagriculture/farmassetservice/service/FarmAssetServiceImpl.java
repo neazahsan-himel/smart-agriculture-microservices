@@ -27,7 +27,7 @@ public class FarmAssetServiceImpl implements FarmAssetService {
             throw new DuplicateResourceException(
                     "Farm asset already exists for farmer " + request.getFarmerId() + " with label: " + request.getLabel());
         }
-        return mapToResponse(farmAssetRepository.save(mapToEntity(request)));
+        return mapToResponse(farmAssetRepository.saveAndFlush(mapToEntity(request)));
     }
 
     @Override
@@ -71,7 +71,7 @@ public class FarmAssetServiceImpl implements FarmAssetService {
         if (request.getLongitude() != null)          asset.setLongitude(request.getLongitude());
         if (request.getStatus() != null)             asset.setStatus(request.getStatus());
 
-        return mapToResponse(farmAssetRepository.save(asset));
+        return mapToResponse(farmAssetRepository.saveAndFlush(asset));
     }
 
     @Override
