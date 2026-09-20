@@ -344,14 +344,44 @@
         #attach-btn:active { transform: scale(0.94); }
         #attach-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        #image-preview-bar {
+        #record-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #f1f8e9;
+            border: 1.5px solid #a5d6a7;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 20px;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        #record-btn:hover  { background: #e0f2e0; }
+        #record-btn:active { transform: scale(0.94); }
+        #record-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        #record-btn.recording {
+            background: #c62828;
+            border-color: #c62828;
+            animation: recordPulse 1.2s infinite;
+        }
+
+        @keyframes recordPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(198,40,40,0.5); }
+            50% { box-shadow: 0 0 0 8px rgba(198,40,40,0); }
+        }
+
+        #image-preview-bar, #audio-preview-bar {
             display: none;
             align-items: center;
             gap: 10px;
             padding: 8px 20px 0 20px;
         }
 
-        #image-preview-bar.visible { display: flex; }
+        #image-preview-bar.visible, #audio-preview-bar.visible { display: flex; }
 
         #image-preview-bar img {
             width: 48px;
@@ -361,7 +391,7 @@
             border: 1.5px solid #a5d6a7;
         }
 
-        #image-preview-bar .remove-image {
+        #image-preview-bar .remove-image, #audio-preview-bar .remove-image {
             background: none;
             border: none;
             color: #c62828;
@@ -369,6 +399,22 @@
             cursor: pointer;
             line-height: 1;
         }
+
+        .play-voice-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 4px 10px;
+            border-radius: 14px;
+            border: 1px solid #a5d6a7;
+            background: #f1f8e9;
+            color: #2e7d32;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .play-voice-btn:hover { background: #e0f2e0; }
 
         .input-hint {
             font-size: 11px;
@@ -429,6 +475,12 @@
     <button class="remove-image" onclick="clearStagedImage()" title="Remove photo">&times;</button>
 </div>
 
+<div id="audio-preview-bar">
+    <span style="font-size: 20px;">🎙️</span>
+    <span id="audio-preview-duration" style="font-size: 12px; color: #666;">Voice message</span>
+    <button class="remove-image" onclick="clearStagedAudio()" title="Remove voice message">&times;</button>
+</div>
+
 <div style="padding: 0 20px;">
     <div class="input-hint">Press Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
 </div>
@@ -436,9 +488,10 @@
 <div class="input-area">
     <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageSelect(event)">
     <button id="attach-btn" onclick="document.getElementById('image-input').click()" title="Attach a photo">📷</button>
+    <button id="record-btn" onclick="toggleRecording()" title="Record a voice message">🎤</button>
     <textarea
         id="question-input"
-        placeholder="Ask your farming question, or attach a photo..."
+        placeholder="Ask your farming question, attach a photo, or record a voice message..."
         rows="1"
         maxlength="1000"
     ></textarea>
@@ -456,10 +509,19 @@
     let   conversationId = null;
     let   stagedImageDataUrl  = null; // full data: URI, kept for local preview/render only
     let   stagedImageBase64   = null; // raw base64 (no data: prefix), sent to the server
+    let   stagedAudioBase64   = null; // raw base64 (no data: prefix) of a recorded voice message
+    let   mediaRecorder       = null;
+    let   audioChunks         = [];
+    let   isRecording         = false;
+    let   recordingTimer      = null;
+    let   recordingSeconds    = 0;
 
-    const imagePreviewBar   = document.getElementById('image-preview-bar');
-    const imagePreviewThumb = document.getElementById('image-preview-thumb');
+    const imagePreviewBar    = document.getElementById('image-preview-bar');
+    const imagePreviewThumb  = document.getElementById('image-preview-thumb');
     const attachBtn          = document.getElementById('attach-btn');
+    const recordBtn          = document.getElementById('record-btn');
+    const audioPreviewBar    = document.getElementById('audio-preview-bar');
+    const audioPreviewDuration = document.getElementById('audio-preview-duration');
     // Demo-only anonymous farmer id for this browser tab; a real login flow would replace this.
     const farmerId = (() => {
         try {
@@ -531,14 +593,79 @@
         imagePreviewBar.classList.remove('visible');
     }
 
+    function toggleRecording() {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    }
+
+    function startRecording() {
+        if (isWaiting) return;
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                clearStagedAudio();
+                audioChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data && e.data.size > 0) audioChunks.push(e.data);
+                };
+                mediaRecorder.onstop = () => {
+                    stream.getTracks().forEach(track => track.stop());
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const dataUrl = reader.result;
+                        stagedAudioBase64 = dataUrl.substring(dataUrl.indexOf(',') + 1);
+                        audioPreviewDuration.textContent = 'Voice message (' + formatDuration(recordingSeconds) + ')';
+                        audioPreviewBar.classList.add('visible');
+                    };
+                    reader.readAsDataURL(blob);
+                };
+                mediaRecorder.start();
+                isRecording = true;
+                recordingSeconds = 0;
+                recordBtn.classList.add('recording');
+                sendBtn.disabled = true; // avoid sending before the async onstop handler stages the audio
+                recordingTimer = setInterval(() => { recordingSeconds++; }, 1000);
+            })
+            .catch(err => {
+                appendMessage('ai', 'Could not access the microphone: ' + err.message, true);
+            });
+    }
+
+    function stopRecording() {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+        }
+        isRecording = false;
+        recordBtn.classList.remove('recording');
+        sendBtn.disabled = isWaiting;
+        clearInterval(recordingTimer);
+    }
+
+    function clearStagedAudio() {
+        stagedAudioBase64 = null;
+        audioPreviewBar.classList.remove('visible');
+    }
+
+    function formatDuration(totalSeconds) {
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return m + ':' + String(s).padStart(2, '0');
+    }
+
     function sendMessage() {
         const question = input.value.trim();
-        if ((!question && !stagedImageBase64) || isWaiting) return;
+        if ((!question && !stagedImageBase64 && !stagedAudioBase64) || isWaiting || isRecording) return;
 
         const imageForBubble = stagedImageDataUrl;
+        const hadAudio = !!stagedAudioBase64;
 
         hideWelcome();
-        appendMessage('farmer', question || (imageForBubble ? '(photo attached)' : ''), false, null, imageForBubble);
+        appendMessage('farmer', question || (imageForBubble ? '(photo attached)' : (hadAudio ? '(voice message)' : '')),
+            false, null, imageForBubble);
         input.value = '';
         input.style.height = 'auto';
 
@@ -550,10 +677,11 @@
             ? '/api/v1/advisor/conversations'
             : `/api/v1/advisor/conversations/${conversationId}/messages`;
         const body = isFirstMessage
-            ? { farmerId: farmerId, queryType: queryType.value, message: question, imageBase64: stagedImageBase64 }
-            : { message: question, imageBase64: stagedImageBase64 };
+            ? { farmerId: farmerId, queryType: queryType.value, message: question, imageBase64: stagedImageBase64, audioBase64: stagedAudioBase64 }
+            : { message: question, imageBase64: stagedImageBase64, audioBase64: stagedAudioBase64 };
 
         clearStagedImage();
+        clearStagedAudio();
 
         fetch(url, {
             method: 'POST',
@@ -572,7 +700,8 @@
             removeTyping(indicator);
             conversationId = data.id || conversationId;
             const lastAgentMessage = (data.messages || []).filter(m => m.sender === 'AGENT').pop();
-            appendMessage('ai', lastAgentMessage ? lastAgentMessage.content : 'No advice returned.', false, data.latestCase);
+            appendMessage('ai', lastAgentMessage ? lastAgentMessage.content : 'No advice returned.',
+                false, data.latestCase, null, data.replyAudioBase64);
         })
         .catch(err => {
             removeTyping(indicator);
@@ -583,7 +712,7 @@
         });
     }
 
-    function appendMessage(role, text, isError = false, diagnosticCase = null, imageDataUrl = null) {
+    function appendMessage(role, text, isError = false, diagnosticCase = null, imageDataUrl = null, replyAudioBase64 = null) {
         const wrapper = document.createElement('div');
         wrapper.className = `message ${role}`;
 
@@ -607,6 +736,15 @@
         const textNode = document.createElement('span');
         textNode.textContent = text;
         bubble.appendChild(textNode);
+
+        if (replyAudioBase64) {
+            const playBtn = document.createElement('button');
+            playBtn.className = 'play-voice-btn';
+            playBtn.textContent = '▶ Play voice reply';
+            playBtn.onclick = () => new Audio('data:audio/wav;base64,' + replyAudioBase64).play();
+            bubble.appendChild(document.createElement('br'));
+            bubble.appendChild(playBtn);
+        }
 
         const meta = document.createElement('div');
         meta.className = 'meta';
@@ -667,6 +805,7 @@
         sendBtn.disabled   = val;
         input.disabled     = val;
         attachBtn.disabled = val;
+        recordBtn.disabled = val;
     }
 
     function scrollToBottom() {
