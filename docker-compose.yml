@@ -1,0 +1,17 @@
+services:
+  whisper-asr:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper-asr
+    environment:
+      ASR_MODEL: medium
+      ASR_ENGINE: faster_whisper
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+
+  piper-tts:
+    build: ./docker/piper-tts
+    container_name: piper-tts
+    ports:
+      - "5002:5002"
+    restart: unless-stopped
