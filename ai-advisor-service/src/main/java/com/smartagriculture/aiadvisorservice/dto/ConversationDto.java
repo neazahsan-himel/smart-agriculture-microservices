@@ -35,6 +35,9 @@ public class ConversationDto {
 
         @Size(max = 7_000_000, message = "Image is too large")
         private String imageBase64;
+
+        @Size(max = 10_000_000, message = "Audio is too large")
+        private String audioBase64;
     }
 
     @Data
@@ -48,6 +51,9 @@ public class ConversationDto {
 
         @Size(max = 7_000_000, message = "Image is too large")
         private String imageBase64;
+
+        @Size(max = 10_000_000, message = "Audio is too large")
+        private String audioBase64;
     }
 
     @Data
@@ -62,6 +68,7 @@ public class ConversationDto {
         private Conversation.ConversationStatus status;
         private List<MessageView> messages;
         private DiagnosticCaseView latestCase;
+        private String replyAudioBase64;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
     }
@@ -75,6 +82,7 @@ public class ConversationDto {
         private Message.Sender sender;
         private String content;
         private boolean hasImage;
+        private boolean hasAudio;
         private LocalDateTime createdAt;
     }
 

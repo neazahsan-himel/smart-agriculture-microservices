@@ -39,6 +39,10 @@ public class Message {
     @Column(columnDefinition = "LONGTEXT")
     private String imageBase64;
 
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String audioBase64;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

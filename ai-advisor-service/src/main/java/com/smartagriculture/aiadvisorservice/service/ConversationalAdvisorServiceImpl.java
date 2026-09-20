@@ -1,6 +1,9 @@
 package com.smartagriculture.aiadvisorservice.service;
 
 import com.smartagriculture.aiadvisorservice.client.OllamaApiClient;
+import com.smartagriculture.aiadvisorservice.client.speech.SpeechToTextClient;
+import com.smartagriculture.aiadvisorservice.client.speech.TextToSpeechClient;
+import com.smartagriculture.aiadvisorservice.exception.ExternalServiceException;
 import com.smartagriculture.aiadvisorservice.dto.ConversationDto;
 import com.smartagriculture.aiadvisorservice.dto.DiagnosticCaseDto;
 import com.smartagriculture.aiadvisorservice.dto.FarmEventDto;
@@ -47,6 +50,8 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     private final ExternalContextFetcher contextFetcher;
     private final OllamaApiClient ollamaApiClient;
     private final AdvisoryResponseParser responseParser;
+    private final SpeechToTextClient speechToTextClient;
+    private final TextToSpeechClient textToSpeechClient;
 
     @Override
     @Transactional
@@ -60,8 +65,9 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                 .status(Conversation.ConversationStatus.OPEN)
                 .build());
 
-        processTurn(conversation, request.getMessage(), request.getImageBase64());
-        return buildResponse(conversation);
+        Optional<String> replyAudio = processTurn(conversation, request.getMessage(),
+                request.getImageBase64(), request.getAudioBase64());
+        return buildResponse(conversation, replyAudio.orElse(null));
     }
 
     @Override
@@ -70,21 +76,22 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         Conversation conversation = conversationRepository.findByIdAndDeletedFalse(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
 
-        processTurn(conversation, request.getMessage(), request.getImageBase64());
-        return buildResponse(conversation);
+        Optional<String> replyAudio = processTurn(conversation, request.getMessage(),
+                request.getImageBase64(), request.getAudioBase64());
+        return buildResponse(conversation, replyAudio.orElse(null));
     }
 
     @Override
     public ConversationDto.Response getConversation(String conversationId) {
         Conversation conversation = conversationRepository.findByIdAndDeletedFalse(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
-        return buildResponse(conversation);
+        return buildResponse(conversation, null);
     }
 
     @Override
     public Page<ConversationDto.Response> getConversationsByFarmer(String farmerId, Pageable pageable) {
         return conversationRepository.findByFarmerIdAndDeletedFalse(farmerId, pageable)
-                .map(this::buildResponse);
+                .map(c -> buildResponse(c, null));
     }
 
     @Override
@@ -132,17 +139,37 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
 
     // ── Core turn pipeline ───────────────────────────────────────────────────
 
-    private void processTurn(Conversation conversation, String farmerMessage, String imageBase64) {
+    private Optional<String> processTurn(Conversation conversation, String farmerMessage, String imageBase64,
+                                          String audioBase64) {
         boolean hasImage = imageBase64 != null && !imageBase64.isBlank();
-        String farmerContent = (farmerMessage == null || farmerMessage.isBlank())
-                ? (hasImage ? "(photo attached)" : farmerMessage)
-                : farmerMessage;
+        boolean hasAudio = audioBase64 != null && !audioBase64.isBlank();
+
+        String effectiveMessage = farmerMessage;
+        if (hasAudio) {
+            boolean hasTypedFallback = effectiveMessage != null && !effectiveMessage.isBlank();
+            try {
+                String transcribed = speechToTextClient.transcribe(audioBase64);
+                if (!hasTypedFallback) {
+                    effectiveMessage = transcribed;
+                }
+            } catch (ExternalServiceException e) {
+                if (!hasTypedFallback) {
+                    throw e;
+                }
+                log.warn("Speech-to-text failed, falling back to the farmer's typed message: {}", e.getMessage());
+            }
+        }
+
+        String farmerContent = (effectiveMessage == null || effectiveMessage.isBlank())
+                ? (hasImage ? "(photo attached)" : effectiveMessage)
+                : effectiveMessage;
 
         messageRepository.save(Message.builder()
                 .conversationId(conversation.getId())
                 .sender(Message.Sender.FARMER)
                 .content(farmerContent)
                 .imageBase64(hasImage ? imageBase64 : null)
+                .audioBase64(hasAudio ? audioBase64 : null)
                 .build());
 
         FarmerResponse farmer = contextFetcher.fetchFarmer(conversation.getFarmerId());
@@ -171,6 +198,8 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                 .description(truncate(parsed.visibleText(), 1500))
                 .diagnosticCaseId(diagnosticCase.getId())
                 .build());
+
+        return hasAudio ? textToSpeechClient.synthesize(parsed.visibleText()) : Optional.empty();
     }
 
     private List<FarmEvent> fetchFarmMemory(Conversation conversation) {
@@ -315,7 +344,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
 
     // ── Mappers ──────────────────────────────────────────────────────────────
 
-    private ConversationDto.Response buildResponse(Conversation conversation) {
+    private ConversationDto.Response buildResponse(Conversation conversation, String replyAudioBase64) {
         List<ConversationDto.MessageView> messages = messageRepository
                 .findByConversationIdOrderByCreatedAtAsc(conversation.getId())
                 .stream()
@@ -324,6 +353,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                         .sender(m.getSender())
                         .content(m.getContent())
                         .hasImage(m.getImageBase64() != null)
+                        .hasAudio(m.getAudioBase64() != null)
                         .createdAt(m.getCreatedAt())
                         .build())
                 .toList();
@@ -341,6 +371,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                 .status(conversation.getStatus())
                 .messages(messages)
                 .latestCase(latestCase)
+                .replyAudioBase64(replyAudioBase64)
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
                 .build();

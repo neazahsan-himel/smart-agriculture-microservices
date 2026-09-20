@@ -67,6 +67,16 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Google Cloud Speech-to-Text / Text-to-Speech (cloud voice provider) -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-speech</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-texttospeech</artifactId>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -76,13 +86,22 @@
 
     </dependencies>
 
-    <!-- Spring Cloud BOM -->
+    <!-- Spring Cloud BOM + Google Cloud Libraries BOM -->
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Manages versions for google-cloud-speech / google-cloud-texttospeech above.
+                 Check https://github.com/googleapis/java-cloud-bom for the latest release. -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>26.48.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
