@@ -39,8 +39,9 @@ public class AdvisoryResponseParser {
             return new ParsedAdvice("", DiagnosticCase.ConfidenceLevel.MEDIUM, DiagnosticCase.RiskLevel.LOW, null, false);
         }
 
-        boolean hasAnyTag = CONFIDENCE.matcher(rawReply).find() || RISK.matcher(rawReply).find()
-                || FOLLOW_UP_DAYS.matcher(rawReply).find() || ESCALATE.matcher(rawReply).find();
+        // Gate on tag *lines*, not valid tag values — otherwise a reply whose tags all have
+        // unparseable values (e.g. "CONFIDENCE: VERY_HIGH") would leak those lines to the farmer.
+        boolean hasAnyTag = TAG_LINE.matcher(rawReply).find();
 
         String visibleText;
         if (hasAnyTag) {
