@@ -6,6 +6,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -32,6 +33,19 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
+        Map<String, Object> error = buildErrorBody(HttpStatus.BAD_REQUEST, "Validation failed");
+        error.put("fieldErrors", fieldErrors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // Constraint annotations on @RequestParam (e.g. forecast lat/lon/hours, page size) — Spring's
+    // built-in method validation raises this instead of MethodArgumentNotValidException
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodValidationException(HandlerMethodValidationException ex) {
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getParameterValidationResults().forEach(result -> fieldErrors.put(
+                result.getMethodParameter().getParameterName(),
+                result.getResolvableErrors().getFirst().getDefaultMessage()));
         Map<String, Object> error = buildErrorBody(HttpStatus.BAD_REQUEST, "Validation failed");
         error.put("fieldErrors", fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);

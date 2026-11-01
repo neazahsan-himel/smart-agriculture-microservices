@@ -26,4 +26,8 @@ public interface ConversationalAdvisorService {
     Page<FarmTaskDto.Response> getFarmTasks(String farmerId, Pageable pageable);
 
     FarmTaskDto.Response updateFarmTaskStatus(String taskId, FarmTask.TaskStatus status);
+
+    FarmTaskDto.Response createWeatherTask(FarmTaskDto.Request request);
+
+    FarmTaskDto.Response refreshBestTime(String taskId);
 }

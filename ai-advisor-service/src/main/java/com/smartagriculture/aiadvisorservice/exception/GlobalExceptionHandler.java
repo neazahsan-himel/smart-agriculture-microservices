@@ -3,6 +3,7 @@ package com.smartagriculture.aiadvisorservice.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -55,6 +56,24 @@ GlobalExceptionHandler {
         Map<String, Object> body = errorBody(HttpStatus.BAD_REQUEST, "Bad Request", "Validation failed");
         body.put("fieldErrors", fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // e.g. asking for the best time of a task that isn't weather-dependent
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.warn("Bad request: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody(
+                HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()
+        ));
+    }
+
+    // Malformed JSON or an unknown enum value (e.g. taskType "WEED") in the request body
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleNotReadableException(HttpMessageNotReadableException ex) {
+        log.warn("Unreadable request body: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorBody(
+                HttpStatus.BAD_REQUEST, "Bad Request", "Malformed request body or invalid enum value"
+        ));
     }
 
     @ExceptionHandler(Exception.class)

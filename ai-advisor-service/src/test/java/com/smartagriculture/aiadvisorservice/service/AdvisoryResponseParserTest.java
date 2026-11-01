@@ -2,7 +2,9 @@ package com.smartagriculture.aiadvisorservice.service;
 
 import com.smartagriculture.aiadvisorservice.entity.DiagnosticCase.ConfidenceLevel;
 import com.smartagriculture.aiadvisorservice.entity.DiagnosticCase.RiskLevel;
+import com.smartagriculture.aiadvisorservice.entity.WeatherTaskType;
 import com.smartagriculture.aiadvisorservice.service.AdvisoryResponseParser.ParsedAdvice;
+import com.smartagriculture.aiadvisorservice.service.AdvisoryResponseParser.SuggestedTask;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,6 +105,56 @@ class AdvisoryResponseParserTest {
         assertThat(result.confidence()).isEqualTo(ConfidenceLevel.MEDIUM);
         assertThat(result.risk()).isEqualTo(RiskLevel.LOW);
         assertThat(result.followUpDays()).isNull();
+    }
+
+    @Test
+    void taskTag_isParsedAndStrippedFromVisibleText() {
+        String raw = DIAGNOSIS + "\n---\nCONFIDENCE: HIGH\nRISK: MEDIUM\nFOLLOW_UP_DAYS: 3\nESCALATE: NO\nTASK: SPRAY 1";
+
+        ParsedAdvice result = parser.parse(raw);
+
+        assertThat(result.visibleText()).isEqualTo(DIAGNOSIS);
+        assertThat(result.suggestedTask()).isEqualTo(new SuggestedTask(WeatherTaskType.SPRAY, 1));
+    }
+
+    @Test
+    void taskTag_withoutDays_meansToday_andIsCaseInsensitive() {
+        ParsedAdvice result = parser.parse(DIAGNOSIS + "\n---\nCONFIDENCE: HIGH\ntask: irrigate");
+
+        assertThat(result.suggestedTask()).isEqualTo(new SuggestedTask(WeatherTaskType.IRRIGATE, 0));
+    }
+
+    @Test
+    void taskTag_daysAreCappedAt14() {
+        ParsedAdvice result = parser.parse(DIAGNOSIS + "\n---\nCONFIDENCE: HIGH\nTASK: SOW 60");
+
+        assertThat(result.suggestedTask().daysFromNow()).isEqualTo(AdvisoryResponseParser.MAX_TASK_DAYS);
+    }
+
+    @Test
+    void taskTag_noneOrUnknownType_givesNoTask() {
+        assertThat(parser.parse(DIAGNOSIS + "\n---\nCONFIDENCE: HIGH\nTASK: NONE").suggestedTask()).isNull();
+
+        ParsedAdvice unknown = parser.parse(DIAGNOSIS + "\n---\nCONFIDENCE: HIGH\nTASK: WEEDING 2");
+        assertThat(unknown.suggestedTask()).isNull();
+        assertThat(unknown.visibleText()).isEqualTo(DIAGNOSIS);
+    }
+
+    @Test
+    void taskTag_lastLineWins_soALaterNoneCancelsAnEarlierTask() {
+        String raw = "---\nTASK: SPRAY 1\n\n" + DIAGNOSIS + "\n---\nCONFIDENCE: LOW\nTASK: NONE";
+
+        assertThat(parser.parse(raw).suggestedTask()).isNull();
+    }
+
+    @Test
+    void taskWordInsideProse_isNotTreatedAsATag() {
+        String raw = "Your main TASK: SPRAY 1 litre per plot.\n---\nCONFIDENCE: HIGH";
+
+        ParsedAdvice result = parser.parse(raw);
+
+        assertThat(result.suggestedTask()).isNull();
+        assertThat(result.visibleText()).isEqualTo("Your main TASK: SPRAY 1 litre per plot.");
     }
 
     @Test

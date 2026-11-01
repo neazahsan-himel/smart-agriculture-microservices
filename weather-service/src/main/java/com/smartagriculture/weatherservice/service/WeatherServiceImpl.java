@@ -1,20 +1,43 @@
 package com.smartagriculture.weatherservice.service;
 
+import com.smartagriculture.weatherservice.client.OpenMeteoClient;
 import com.smartagriculture.weatherservice.dto.WeatherDto;
 import com.smartagriculture.weatherservice.entity.WeatherRecord;
 import com.smartagriculture.weatherservice.exception.DuplicateResourceException;
 import com.smartagriculture.weatherservice.exception.ResourceNotFoundException;
 import com.smartagriculture.weatherservice.repository.WeatherRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WeatherServiceImpl implements WeatherService {
 
     private final WeatherRepository weatherRepository;
+    private final OpenMeteoClient openMeteoClient;
+
+    @Value("${weather.forecast.refresh-minutes:180}")
+    private long forecastRefreshMinutes;
+
+    // Last successful Open-Meteo sync per rounded coordinate. In-memory on purpose: updatedAt can't
+    // be used, since Hibernate skips the UPDATE (and the timestamp) when a re-fetched hour is unchanged.
+    // Lost on restart, which only costs one extra fetch.
+    private final Map<String, Instant> lastForecastSync = new ConcurrentHashMap<>();
 
     @Override
     public WeatherDto.Response createWeatherRecord(WeatherDto.Request request) {
@@ -103,6 +126,67 @@ public class WeatherServiceImpl implements WeatherService {
         record.setDeleted(true);
         record.setStatus(WeatherRecord.WeatherStatus.INACTIVE);
         weatherRepository.save(record);
+    }
+
+    @Override
+    public List<WeatherDto.Response> getHourlyForecast(String countryCode, String region,
+                                                       double latitude, double longitude, int hours) {
+        // ~1 km grid, so nearby farmers share one cached forecast
+        double lat = roundCoordinate(latitude);
+        double lon = roundCoordinate(longitude);
+
+        String key = lat + "," + lon;
+        Instant lastSync = lastForecastSync.get(key);
+        if (lastSync == null || lastSync.isBefore(Instant.now().minus(Duration.ofMinutes(forecastRefreshMinutes)))) {
+            try {
+                syncForecast(countryCode, region, lat, lon);
+                lastForecastSync.put(key, Instant.now());
+            } catch (Exception e) {
+                // Serve whatever is cached (possibly stale or empty) rather than failing the caller
+                log.warn("Open-Meteo sync failed for {}: {}", key, e.getMessage());
+            }
+        }
+
+        LocalDateTime from = LocalDateTime.now().truncatedTo(ChronoUnit.HOURS);
+        return weatherRepository
+                .findByLatitudeAndLongitudeAndRecordTypeAndDeletedFalseAndRecordedAtBetweenOrderByRecordedAtAsc(
+                        lat, lon, WeatherRecord.RecordType.FORECAST, from, from.plusHours(hours - 1L))
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // Upsert by (lat, lon, recordedAt, FORECAST) — a re-sync refreshes existing hours instead of
+    // duplicating them, so the user-facing 409 duplicate check doesn't apply here.
+    private void syncForecast(String countryCode, String region, double lat, double lon) {
+        List<WeatherRecord> fetched = openMeteoClient.fetchHourly(countryCode, region, lat, lon);
+        if (fetched.isEmpty()) return;
+
+        Map<LocalDateTime, WeatherRecord> existing = weatherRepository
+                .findByLatitudeAndLongitudeAndRecordTypeAndDeletedFalseAndRecordedAtBetweenOrderByRecordedAtAsc(
+                        lat, lon, WeatherRecord.RecordType.FORECAST,
+                        fetched.getFirst().getRecordedAt(), fetched.getLast().getRecordedAt())
+                .stream()
+                .collect(Collectors.toMap(WeatherRecord::getRecordedAt, Function.identity(), (a, b) -> a));
+
+        List<WeatherRecord> toSave = fetched.stream().map(f -> {
+            WeatherRecord record = existing.get(f.getRecordedAt());
+            if (record == null) return f;
+            record.setTemperatureCelsius(f.getTemperatureCelsius());
+            record.setHumidityPercent(f.getHumidityPercent());
+            record.setRainfallMm(f.getRainfallMm());
+            record.setWindSpeedKmh(f.getWindSpeedKmh());
+            record.setWeatherCondition(f.getWeatherCondition());
+            record.setDataSource(f.getDataSource());
+            return record;
+        }).toList();
+
+        weatherRepository.saveAll(toSave);
+        log.info("Synced {} Open-Meteo forecast hours for {},{}", toSave.size(), lat, lon);
+    }
+
+    static double roundCoordinate(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private WeatherDto.Response toResponse(WeatherRecord record) {

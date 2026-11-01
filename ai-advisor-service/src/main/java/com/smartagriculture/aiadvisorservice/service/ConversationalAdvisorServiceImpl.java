@@ -16,12 +16,16 @@ import com.smartagriculture.aiadvisorservice.entity.DiagnosticCase;
 import com.smartagriculture.aiadvisorservice.entity.FarmEvent;
 import com.smartagriculture.aiadvisorservice.entity.FarmTask;
 import com.smartagriculture.aiadvisorservice.entity.Message;
+import com.smartagriculture.aiadvisorservice.entity.WeatherTaskType;
+import com.smartagriculture.aiadvisorservice.exception.DuplicateResourceException;
 import com.smartagriculture.aiadvisorservice.exception.ResourceNotFoundException;
 import com.smartagriculture.aiadvisorservice.repository.ConversationRepository;
 import com.smartagriculture.aiadvisorservice.repository.DiagnosticCaseRepository;
 import com.smartagriculture.aiadvisorservice.repository.FarmEventRepository;
 import com.smartagriculture.aiadvisorservice.repository.FarmTaskRepository;
 import com.smartagriculture.aiadvisorservice.repository.MessageRepository;
+import com.smartagriculture.aiadvisorservice.service.weather.ForecastFormatter;
+import com.smartagriculture.aiadvisorservice.service.weather.WeatherTaskAdvisor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,6 +45,9 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     private static final List<DiagnosticCase.CaseStatus> OPEN_STATUSES =
             List.of(DiagnosticCase.CaseStatus.OPEN, DiagnosticCase.CaseStatus.AWAITING_FOLLOWUP);
 
+    private static final String FOLLOW_UP_TASK_TYPE = "FOLLOW_UP";
+    private static final int PROMPT_FORECAST_HOURS = 48;
+
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final DiagnosticCaseRepository diagnosticCaseRepository;
@@ -52,6 +59,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     private final AdvisoryResponseParser responseParser;
     private final SpeechToTextClient speechToTextClient;
     private final TextToSpeechClient textToSpeechClient;
+    private final WeatherTaskAdvisor weatherTaskAdvisor;
 
     @Override
     @Transactional
@@ -137,6 +145,49 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         return toFarmTaskResponse(farmTaskRepository.save(task));
     }
 
+    @Override
+    public FarmTaskDto.Response createWeatherTask(FarmTaskDto.Request request) {
+        String taskType = request.getTaskType().name();
+        if (farmTaskRepository.findFirstByFarmerIdAndFarmAssetIdAndTaskTypeAndStatusAndDeletedFalse(
+                request.getFarmerId(), request.getFarmAssetId(), taskType, FarmTask.TaskStatus.PENDING).isPresent()) {
+            throw new DuplicateResourceException("A pending " + taskType + " task already exists for farmer "
+                    + request.getFarmerId() + (request.getFarmAssetId() != null ? " / asset " + request.getFarmAssetId() : ""));
+        }
+
+        FarmTask task = FarmTask.builder()
+                .farmerId(request.getFarmerId())
+                .farmAssetId(request.getFarmAssetId())
+                .taskType(taskType)
+                .dueDate(request.getDueDate())
+                .priority(request.getPriority() != null ? request.getPriority() : FarmTask.TaskPriority.MEDIUM)
+                .weatherDependent(true)
+                .build();
+
+        evaluateBestEffort(task);
+        return toFarmTaskResponse(farmTaskRepository.saveAndFlush(task));
+    }
+
+    @Override
+    public FarmTaskDto.Response refreshBestTime(String taskId) {
+        FarmTask task = farmTaskRepository.findByIdAndDeletedFalse(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Farm task not found with id: " + taskId));
+        if (WeatherTaskType.fromTaskType(task.getTaskType()) == null) {
+            throw new IllegalArgumentException("Task " + taskId + " (" + task.getTaskType() + ") is not weather-dependent");
+        }
+        weatherTaskAdvisor.evaluate(task);
+        return toFarmTaskResponse(farmTaskRepository.saveAndFlush(task));
+    }
+
+    // Forecast problems must never fail task creation or a conversation turn; the scheduler retries hourly
+    private void evaluateBestEffort(FarmTask task) {
+        try {
+            weatherTaskAdvisor.evaluate(task);
+        } catch (Exception e) {
+            log.warn("Best-time evaluation failed for {} task of farmer {}: {}",
+                    task.getTaskType(), task.getFarmerId(), e.getMessage());
+        }
+    }
+
     // ── Core turn pipeline ───────────────────────────────────────────────────
 
     private Optional<String> processTurn(Conversation conversation, String farmerMessage, String imageBase64,
@@ -174,32 +225,45 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
 
         FarmerResponse farmer = contextFetcher.fetchFarmer(conversation.getFarmerId());
         List<CropSummary> crops = contextFetcher.fetchCrops();
-        List<WeatherSummary> weather = contextFetcher.fetchWeather();
+        // Location-specific forecast when the farmer has coordinates; otherwise the latest records as before
+        List<WeatherSummary> forecast = contextFetcher.fetchForecast(farmer, PROMPT_FORECAST_HOURS);
+        List<WeatherSummary> weather = forecast.isEmpty() ? contextFetcher.fetchWeather() : List.of();
         List<FarmEvent> farmMemory = fetchFarmMemory(conversation);
         List<Message> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
 
-        String userMessage = buildUserMessage(conversation, farmer, crops, weather, farmMemory, history, hasImage);
+        String userMessage = buildUserMessage(conversation, farmer, crops, forecast, weather, farmMemory, history, hasImage);
         String rawReply = ollamaApiClient.getAdvice(PromptTemplates.CONVERSATION_SYSTEM_PROMPT, userMessage,
                 hasImage ? List.of(imageBase64) : List.of());
         AdvisoryResponseParser.ParsedAdvice parsed = responseParser.parse(rawReply);
 
+        DiagnosticCase diagnosticCase = upsertDiagnosticCase(conversation, farmerContent, hasImage, parsed);
+
+        // The rule-based best time is appended to the reply so the chat always agrees with the
+        // notifications the scheduler sends later — the model's own timing can be off (observed:
+        // "spray at 00-03" because those blocks were dry).
+        String agentText = parsed.visibleText();
+        if (parsed.suggestedTask() != null) {
+            FarmTask task = upsertSuggestedWeatherTask(diagnosticCase, parsed.suggestedTask());
+            if (task.getWeatherAdvice() != null) {
+                agentText = agentText + "\n\nForecast check: " + task.getWeatherAdvice();
+            }
+        }
+
         messageRepository.save(Message.builder()
                 .conversationId(conversation.getId())
                 .sender(Message.Sender.AGENT)
-                .content(parsed.visibleText())
+                .content(agentText)
                 .build());
-
-        DiagnosticCase diagnosticCase = upsertDiagnosticCase(conversation, farmerContent, hasImage, parsed);
 
         farmEventRepository.save(FarmEvent.builder()
                 .farmerId(conversation.getFarmerId())
                 .farmAssetId(conversation.getFarmAssetId())
                 .eventType(FarmEvent.EventType.ADVICE)
-                .description(truncate(parsed.visibleText(), 1500))
+                .description(truncate(agentText, 1500))
                 .diagnosticCaseId(diagnosticCase.getId())
                 .build());
 
-        return hasAudio ? textToSpeechClient.synthesize(parsed.visibleText()) : Optional.empty();
+        return hasAudio ? textToSpeechClient.synthesize(agentText) : Optional.empty();
     }
 
     private List<FarmEvent> fetchFarmMemory(Conversation conversation) {
@@ -249,11 +313,12 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     }
 
     private void upsertFollowUpTask(DiagnosticCase diagnosticCase) {
-        FarmTask task = farmTaskRepository.findBySourceDiagnosticCaseIdAndDeletedFalse(diagnosticCase.getId())
+        FarmTask task = farmTaskRepository
+                .findBySourceDiagnosticCaseIdAndTaskTypeAndDeletedFalse(diagnosticCase.getId(), FOLLOW_UP_TASK_TYPE)
                 .orElseGet(() -> FarmTask.builder()
                         .farmerId(diagnosticCase.getFarmerId())
                         .farmAssetId(diagnosticCase.getFarmAssetId())
-                        .taskType("FOLLOW_UP")
+                        .taskType(FOLLOW_UP_TASK_TYPE)
                         .sourceDiagnosticCaseId(diagnosticCase.getId())
                         .build());
 
@@ -262,6 +327,30 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         task.setWeatherDependent(false);
         task.setStatus(FarmTask.TaskStatus.PENDING);
         farmTaskRepository.save(task);
+    }
+
+    // Upsert, not 409: the model may repeat the same TASK tag on several turns of one conversation,
+    // which should just move the planned date of the existing pending task.
+    private FarmTask upsertSuggestedWeatherTask(DiagnosticCase diagnosticCase, AdvisoryResponseParser.SuggestedTask suggested) {
+        String taskType = suggested.type().name();
+        FarmTask task = farmTaskRepository.findFirstByFarmerIdAndFarmAssetIdAndTaskTypeAndStatusAndDeletedFalse(
+                        diagnosticCase.getFarmerId(), diagnosticCase.getFarmAssetId(), taskType, FarmTask.TaskStatus.PENDING)
+                .orElseGet(() -> FarmTask.builder()
+                        .farmerId(diagnosticCase.getFarmerId())
+                        .farmAssetId(diagnosticCase.getFarmAssetId())
+                        .taskType(taskType)
+                        .weatherDependent(true)
+                        .build());
+
+        task.setDueDate(LocalDateTime.now().plusDays(suggested.daysFromNow()));
+        task.setPriority(mapRiskToPriority(diagnosticCase.getRiskLevel()));
+        task.setSourceDiagnosticCaseId(diagnosticCase.getId());
+        evaluateBestEffort(task);
+        boolean isNew = task.getId() == null;
+        FarmTask saved = farmTaskRepository.save(task);
+        log.info("Advisor suggested {} in {} day(s) for farmer {} — task {}", taskType, suggested.daysFromNow(),
+                diagnosticCase.getFarmerId(), isNew ? "created" : "updated");
+        return saved;
     }
 
     private FarmTask.TaskPriority mapRiskToPriority(DiagnosticCase.RiskLevel risk) {
@@ -277,8 +366,8 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     // ── Prompt Builder ───────────────────────────────────────────────────────
 
     private String buildUserMessage(Conversation conversation, FarmerResponse farmer, List<CropSummary> crops,
-                                     List<WeatherSummary> weather, List<FarmEvent> farmMemory, List<Message> history,
-                                     boolean hasImage) {
+                                     List<WeatherSummary> forecast, List<WeatherSummary> weather,
+                                     List<FarmEvent> farmMemory, List<Message> history, boolean hasImage) {
         StringBuilder sb = new StringBuilder();
 
         sb.append("Query Type: ").append(conversation.getTopic()).append("\n\n");
@@ -308,10 +397,15 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
             });
         }
 
-        sb.append("\n== RECENT WEATHER CONDITIONS ==\n");
-        if (weather.isEmpty()) {
+        if (!forecast.isEmpty()) {
+            sb.append("\n== WEATHER FORECAST FOR THE FARMER'S LOCATION (next ")
+                    .append(PROMPT_FORECAST_HOURS).append("h, 3-hour blocks, local time) ==\n");
+            ForecastFormatter.toThreeHourBlocks(forecast).forEach(line -> sb.append(line).append("\n"));
+        } else if (weather.isEmpty()) {
+            sb.append("\n== RECENT WEATHER CONDITIONS ==\n");
             sb.append("No weather data available.\n");
         } else {
+            sb.append("\n== RECENT WEATHER CONDITIONS ==\n");
             weather.forEach(w -> {
                 sb.append("- ").append(w.getRecordType()).append(" at ").append(w.getRecordedAt());
                 sb.append(" | ").append(w.getWeatherCondition());
@@ -431,6 +525,9 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                 .weatherDependent(t.getWeatherDependent())
                 .status(t.getStatus())
                 .sourceDiagnosticCaseId(t.getSourceDiagnosticCaseId())
+                .recommendedStartAt(t.getRecommendedStartAt())
+                .weatherAdvice(t.getWeatherAdvice())
+                .weatherCheckedAt(t.getWeatherCheckedAt())
                 .build();
     }
 

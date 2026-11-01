@@ -14,6 +14,8 @@ public class FarmerResponse {
     private String phoneNumber;
     private String countryCode;
     private String region;
+    private Double latitude;
+    private Double longitude;
     private Double farmSizeHectares;
     private String soilType;
     private String status;

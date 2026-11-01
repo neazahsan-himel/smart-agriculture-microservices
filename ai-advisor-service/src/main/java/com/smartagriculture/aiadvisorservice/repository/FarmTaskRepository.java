@@ -13,7 +13,17 @@ public interface FarmTaskRepository extends JpaRepository<FarmTask, String> {
 
     Optional<FarmTask> findByIdAndDeletedFalse(String id);
 
-    Optional<FarmTask> findBySourceDiagnosticCaseIdAndDeletedFalse(String sourceDiagnosticCaseId);
+    // A diagnostic case can now source both its FOLLOW_UP task and advisor-suggested weather tasks,
+    // so the lookup must be scoped by task type to stay single-result.
+    Optional<FarmTask> findBySourceDiagnosticCaseIdAndTaskTypeAndDeletedFalse(String sourceDiagnosticCaseId,
+                                                                             String taskType);
+
+    // Duplicate check / upsert key for weather tasks (null farmAssetId matches IS NULL)
+    Optional<FarmTask> findFirstByFarmerIdAndFarmAssetIdAndTaskTypeAndStatusAndDeletedFalse(
+            String farmerId, String farmAssetId, String taskType, FarmTask.TaskStatus status);
+
+    List<FarmTask> findByStatusAndWeatherDependentTrueAndDeletedFalseAndDueDateLessThanEqual(
+            FarmTask.TaskStatus status, LocalDateTime horizon);
 
     Page<FarmTask> findByFarmerIdAndDeletedFalse(String farmerId, Pageable pageable);
 

@@ -22,9 +22,10 @@ public final class PromptTemplates {
                and a clarifying question in the same turn.
             2. Once you have enough information, give a brief assessment, specific actionable
                recommendations (2-4 bullet points), and any warnings.
-            3. When recent weather data is provided, translate it into an explicit timed action
+            3. When a weather forecast is provided, translate it into an explicit timed action
                (e.g. "Do not spray today — rain expected; spray tomorrow morning 7-9am instead")
-               rather than just restating the forecast.
+               rather than just restating the forecast. Field work happens in daylight: suggest
+               early morning (6-10am) or late afternoon (4-6pm), never night hours.
             4. When farm memory (past events/treatments/outcomes) is provided, reference it if
                relevant (e.g. "Since the same plot had this issue last season and the treatment
                didn't fully work, consider...").
@@ -38,6 +39,7 @@ public final class PromptTemplates {
             RISK: LOW|MEDIUM|HIGH|CRITICAL
             FOLLOW_UP_DAYS: <integer, or NONE if no follow-up is needed>
             ESCALATE: YES|NO
+            TASK: SPRAY|FERTILIZE|IRRIGATE|HARVEST|SOW <days from today>, or NONE
 
             Guidance for the tags:
             - CONFIDENCE reflects how sure you are of the diagnosis/recommendation (LOW if you
@@ -47,6 +49,11 @@ public final class PromptTemplates {
               treatment) so the system can proactively check in; NONE if not applicable.
             - ESCALATE: YES only for high-risk, low-confidence, unusual, or toxic-chemical
               situations that should be routed to a human expert.
+            - TASK: when your advice tells the farmer to spray, apply fertiliser, irrigate, harvest
+              or sow, name that action and how many days from today they plan to do it
+              (0 = today), e.g. "TASK: SPRAY 1". The system then picks the best hour from the
+              forecast and reminds the farmer. Use NONE when you are only asking a question or
+              the advice involves none of these actions.
             """;
 
     public static final String IMAGE_ANALYSIS_INSTRUCTION = """

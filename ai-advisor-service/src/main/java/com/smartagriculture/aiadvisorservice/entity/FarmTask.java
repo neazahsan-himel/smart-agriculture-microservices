@@ -56,6 +56,21 @@ public class FarmTask {
 
     private String sourceDiagnosticCaseId;
 
+    // ── Weather-to-Decision (weather-dependent tasks only) ──────────────────
+    private LocalDateTime recommendedStartAt;
+
+    @Column(length = 500)
+    private String weatherAdvice;
+
+    private LocalDateTime weatherCheckedAt;
+
+    // 3-hour slot (or "NO_WINDOW") the farmer was last notified about — avoids hourly repeats
+    private String lastNotifiedSlot;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean startNowNotified = false;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean deleted = false;

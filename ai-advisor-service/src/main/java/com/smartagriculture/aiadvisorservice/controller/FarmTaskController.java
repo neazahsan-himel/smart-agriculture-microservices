@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +17,20 @@ import org.springframework.web.bind.annotation.*;
 public class FarmTaskController {
 
     private final ConversationalAdvisorService conversationalAdvisorService;
+
+    // Plan a weather-dependent task (spray/fertilise/irrigate/harvest/sow); best time is evaluated immediately
+    @PostMapping
+    public ResponseEntity<FarmTaskDto.Response> createWeatherTask(@Valid @RequestBody FarmTaskDto.Request request) {
+        log.info("POST /api/v1/advisor/farm-tasks - farmerId={}, taskType={}, dueDate={}",
+                request.getFarmerId(), request.getTaskType(), request.getDueDate());
+        return ResponseEntity.status(HttpStatus.CREATED).body(conversationalAdvisorService.createWeatherTask(request));
+    }
+
+    // Re-evaluates against the latest forecast
+    @GetMapping("/{id}/best-time")
+    public ResponseEntity<FarmTaskDto.Response> getBestTime(@PathVariable String id) {
+        return ResponseEntity.ok(conversationalAdvisorService.refreshBestTime(id));
+    }
 
     @GetMapping
     public ResponseEntity<Page<FarmTaskDto.Response>> getFarmTasks(

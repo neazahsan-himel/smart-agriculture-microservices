@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * Proactive Follow-up Agent: hourly sweep for diagnostic cases and farm tasks that are
  * due, pushing a notification via notification-service for each. Weather-dependent tasks
- * are skipped here — they need a weather-aware trigger, not a plain time check.
+ * are skipped here — {@link WeatherTaskScheduler} handles them with a weather-aware trigger.
  */
 @Component
 @RequiredArgsConstructor

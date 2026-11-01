@@ -48,6 +48,21 @@ public class ExternalContextFetcher {
         }
     }
 
+    /** Hourly forecast for the farmer's coordinates; empty when they have none or the call fails. */
+    public List<WeatherSummary> fetchForecast(FarmerResponse farmer, int hours) {
+        if (farmer == null || farmer.getLatitude() == null || farmer.getLongitude() == null) {
+            return Collections.emptyList();
+        }
+        try {
+            List<WeatherSummary> forecast = weatherServiceClient.getForecast(farmer.getCountryCode(),
+                    farmer.getRegion(), farmer.getLatitude(), farmer.getLongitude(), hours);
+            return forecast != null ? forecast : Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("Could not fetch forecast for farmer {}: {}", farmer.getId(), e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
     public List<WeatherSummary> fetchWeather() {
         try {
             PageResponse<WeatherSummary> page = weatherServiceClient.getWeatherRecords(0, 5, "recordedAt", "desc");
