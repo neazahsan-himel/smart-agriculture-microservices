@@ -27,6 +27,6 @@ public interface FarmTaskRepository extends JpaRepository<FarmTask, String> {
 
     Page<FarmTask> findByFarmerIdAndDeletedFalse(String farmerId, Pageable pageable);
 
-    List<FarmTask> findByStatusAndWeatherDependentFalseAndDueDateLessThanEqual(
+        List<FarmTask> findByStatusAndWeatherDependentFalseAndDeletedFalseAndDueDateLessThanEqual(
             FarmTask.TaskStatus status, LocalDateTime now);
 }

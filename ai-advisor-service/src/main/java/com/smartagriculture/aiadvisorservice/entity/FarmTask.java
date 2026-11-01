@@ -56,6 +56,9 @@ public class FarmTask {
 
     private String sourceDiagnosticCaseId;
 
+    // Due date the plain "due now" reminder was sent for — one reminder per due date, a moved due date re-arms it
+    private LocalDateTime reminderSentFor;
+
     // ── Weather-to-Decision (weather-dependent tasks only) ──────────────────
     private LocalDateTime recommendedStartAt;
 

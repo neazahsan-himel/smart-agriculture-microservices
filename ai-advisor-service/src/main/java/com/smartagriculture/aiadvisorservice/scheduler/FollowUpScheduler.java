@@ -12,17 +12,22 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Proactive Follow-up Agent: hourly sweep for diagnostic cases and farm tasks that are
  * due, pushing a notification via notification-service for each. Weather-dependent tasks
  * are skipped here — {@link WeatherTaskScheduler} handles them with a weather-aware trigger.
+ * Each case and each task due date is notified once; failed sends are retried on the next run.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class FollowUpScheduler {
+
+    private static final DateTimeFormatter TITLE_FORMAT = DateTimeFormatter.ofPattern("EEE d MMM HH:mm", Locale.ENGLISH);
 
     private final DiagnosticCaseRepository diagnosticCaseRepository;
     private final FarmTaskRepository farmTaskRepository;
@@ -34,22 +39,24 @@ public class FollowUpScheduler {
 
         List<DiagnosticCase> dueCases = diagnosticCaseRepository
                 .findByStatusAndFollowUpDueAtLessThanEqual(DiagnosticCase.CaseStatus.AWAITING_FOLLOWUP, now);
-        dueCases.forEach(this::sendCaseFollowUp);
+        long casesSent = dueCases.stream().filter(this::sendCaseFollowUp).count();
 
         List<FarmTask> dueTasks = farmTaskRepository
-                .findByStatusAndWeatherDependentFalseAndDueDateLessThanEqual(FarmTask.TaskStatus.PENDING, now);
-        dueTasks.forEach(this::sendTaskReminder);
+                .findByStatusAndWeatherDependentFalseAndDeletedFalseAndDueDateLessThanEqual(FarmTask.TaskStatus.PENDING, now);
+        long remindersSent = dueTasks.stream().filter(this::sendTaskReminder).count();
 
-        if (!dueCases.isEmpty() || !dueTasks.isEmpty()) {
-            log.info("FollowUpScheduler: sent {} case follow-ups, {} task reminders", dueCases.size(), dueTasks.size());
+        if (casesSent > 0 || remindersSent > 0) {
+            log.info("FollowUpScheduler: sent {} case follow-ups, {} task reminders", casesSent, remindersSent);
         }
     }
 
-    private void sendCaseFollowUp(DiagnosticCase diagnosticCase) {
+    /** Returns true if a notification was sent. */
+    boolean sendCaseFollowUp(DiagnosticCase diagnosticCase) {
         try {
+            // Titles carry a date: notification-service rejects an identical PENDING title for the same farmer (409)
             notificationServiceClient.createNotification(NotificationRequest.builder()
                     .farmerId(diagnosticCase.getFarmerId())
-                    .title("Follow-up: how is your crop doing?")
+                    .title("Follow-up: how is your crop doing? (" + diagnosticCase.getFollowUpDueAt().format(TITLE_FORMAT) + ")")
                     .message("A few days ago you reported: \"" + diagnosticCase.getSymptom()
                             + "\". Please let us know how it's going, or send a new photo/message.")
                     .type("CROP_ADVISORY")
@@ -59,26 +66,38 @@ public class FollowUpScheduler {
 
             diagnosticCase.setStatus(DiagnosticCase.CaseStatus.FOLLOWUP_SENT);
             diagnosticCaseRepository.save(diagnosticCase);
+            return true;
         } catch (Exception e) {
             log.warn("Failed to send follow-up notification for case {}: {}", diagnosticCase.getId(), e.getMessage());
+            return false;
         }
     }
 
-    private void sendTaskReminder(FarmTask task) {
+    /** Returns true if a reminder was sent; false if already reminded for this due date or the send failed. */
+    boolean sendTaskReminder(FarmTask task) {
+        // Task itself stays PENDING until the farmer marks it DONE/SKIPPED via the API;
+        // remind once per due date — rescheduling the task re-arms the reminder.
+        if (task.getDueDate().equals(task.getReminderSentFor())) {
+            return false;
+        }
         try {
             notificationServiceClient.createNotification(NotificationRequest.builder()
                     .farmerId(task.getFarmerId())
-                    .title("Reminder: " + task.getTaskType())
+                    .title("Reminder: " + task.getTaskType() + " (due " + task.getDueDate().format(TITLE_FORMAT) + ")")
                     .message("A scheduled farm task is due now: " + task.getTaskType())
                     .type("CROP_ADVISORY")
                     .channel("IN_APP")
                     .priority(task.getPriority().name())
                     .build());
+
+            task.setReminderSentFor(task.getDueDate());
+            farmTaskRepository.save(task);
+            return true;
         } catch (Exception e) {
+            // Not recorded as reminded, so the next hourly run retries
             log.warn("Failed to send task reminder for task {}: {}", task.getId(), e.getMessage());
+            return false;
         }
-        // Task itself stays PENDING until the farmer marks it DONE/SKIPPED via the API;
-        // the reminder can legitimately repeat hourly until then.
     }
 
     private String mapRiskToPriority(DiagnosticCase.RiskLevel risk) {

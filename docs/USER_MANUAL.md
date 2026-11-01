@@ -56,7 +56,7 @@ a graceful fallback instead of hanging the whole app.
 | **farmer-service** | 8081 | Farmer profiles: name, phone, location, farm size, soil type, irrigation method, language preference. |
 | **crop-service** | 8082 | A reference catalog of crops (name, variety, ideal soil/temperature/rainfall, growing duration, typical yield) — the AI looks this up when giving advice. |
 | **farm-asset-service** | 8086 | Each individual plot/pond a farmer owns — e.g. "Rice Plot 1", "Tilapia Pond" — with its own area, current crop/stock, and stage. |
-| **weather-service** | 8083 | Recorded weather conditions (temperature, rainfall, condition) used as context for advice. |
+| **weather-service** | 8083 | Weather records, plus an hourly **forecast for any location**, pulled from Open-Meteo (free, no API key) and cached for 3 hours. |
 | **notification-service** | 8085 | Alerts to farmers (weather alert, crop advisory, pest warning, irrigation reminder), each with a priority (LOW → CRITICAL) and channel (SMS/push/in-app/email). |
 | **ai-advisor-service** | 8084 | The brain. Runs the conversation with the farmer, calls the local LLM, and tracks diagnostic cases and follow-ups (details in §5). |
 | **api-gateway** | 8080 | The single public entry point. Routes requests, applies circuit breakers, and serves the Chat UI. |
@@ -102,17 +102,20 @@ this, per turn:
 2. **Gathers context** by calling the other services:
    - the farmer's profile (`farmer-service`)
    - the crop catalog (`crop-service`)
-   - recent weather (`weather-service`)
+   - the next 48 hours of weather **for the farmer's own location** (`weather-service`,
+     from the latitude/longitude on their profile), condensed into 3-hour blocks
    - up to 5 recent "farm memory" events for this farmer/asset — past advice, past
      outcomes — so the advisor doesn't repeat itself or contradict earlier guidance
    - the full message history of this conversation
 3. **Builds one structured prompt** out of all of that and sends it to Ollama — the text
    model (`qwen3:8b`) for a normal question, or the vision model (`llava:7b`) if a photo was
    attached.
-4. **Parses the reply** for three things beyond the visible answer:
+4. **Parses the reply** for four things beyond the visible answer:
    - a **confidence level** (how sure the model is)
    - a **risk level** (LOW/MEDIUM/HIGH/CRITICAL — how bad it is if the advice is wrong)
    - whether it needs a **follow-up in N days**, or should be **escalated**
+   - whether the advice involves **weather-sensitive work** (spray, fertilise, irrigate,
+     harvest, sow) and in how many days — see "Best time to do it" below
 5. **Opens or updates a "diagnostic case"** for the conversation — a persistent record of
    "what's the problem, what's the working hypothesis, what did we recommend, what's the
    confidence/risk, is it resolved yet."
@@ -132,6 +135,31 @@ When a farmer later confirms whether the problem improved, that's recorded via
 `PATCH /api/v1/advisor/diagnostic-cases/{id}/outcome` — this closes the loop and is what the
 project's roadmap calls "outcome tracking."
 
+### Best time to do it (Weather-to-Decision)
+
+Some farm work only makes sense in the right weather: spraying just before rain wastes the
+pesticide, and fertiliser washes off in a downpour. For these jobs the system doesn't just
+show a forecast; it **picks the time**.
+
+- A weather-sensitive task is created either by the farmer/app
+  (`POST /api/v1/advisor/farm-tasks` with `SPRAY`, `FERTILIZE`, `IRRIGATE`, `HARVEST` or
+  `SOW` and a planned date) or **automatically from the chat**, when the advisor recommends
+  one of those jobs.
+- A rule-based engine (`BestTimeEvaluator`) scans the hourly forecast around the planned
+  date and picks the **earliest safe hour**. Examples: spraying needs 6–10am or 4–6pm, wind
+  ≤ 15 km/h and no rain for 6 hours after; fertiliser must not get 10 mm+ of rain in the next
+  24 hours. It explains its choice ("Earlier times were skipped: 4.2 mm rain expected…").
+- In the chat, that verdict is added to the advisor's reply as a **"Forecast check:"** line.
+  The rule-based time is the one to trust: the LLM's own timing in the prose can be off
+  (see `docs/DAY11-PROGRESS.md`).
+- Every hour, `WeatherTaskScheduler` re-checks pending tasks against the latest forecast and
+  sends a **WEATHER_ALERT** notification only when something changes: the best time moves,
+  no safe time is left, or the chosen time is about to start ("Good time to spray from…").
+- `GET /api/v1/advisor/farm-tasks/{id}/best-time` re-checks a task on demand.
+
+The engine is deliberately rules, not AI: the same forecast always gives the same answer,
+and it can say exactly why.
+
 ---
 
 ## 6. Running it locally (for a live demo)
@@ -150,7 +178,10 @@ MySQL being reachable:
    `weather-service`, `farm-asset-service`, `notification-service`, `ai-advisor-service`.
 5. Start `api-gateway` last (port 8080).
 6. Open `http://localhost:8080/` — that's the whole demo.
-7. Optional: `scripts/seed-data.sql` has ready-made sample farmers (e.g. "John Rahman",
+7. Forecasts need **internet access** (to `api.open-meteo.com`) and a farmer profile with
+   `latitude`/`longitude` set. Without either, the advisor falls back to whatever weather
+   records are stored and the best-time engine reports "no forecast available".
+8. Optional: `scripts/seed-data.sql` has ready-made sample farmers (e.g. "John Rahman",
    Rajshahi; "Rahim Uddin", Manikganj) so the chat has something realistic to reference
    instead of an empty database.
 
@@ -161,11 +192,13 @@ MySQL being reachable:
 This matters when explaining the project so nobody overclaims what exists:
 
 **Actually built and working** (everything above): farmer/crop/weather/farm-asset/
-notification CRUD, the conversational advisor with photo-based diagnosis, diagnostic case
-tracking with confidence/risk, automatic follow-up task scheduling, and a working chat UI.
+notification CRUD, the conversational advisor with photo-based diagnosis and voice
+input/output (Bangla speech via local Whisper/Piper or Google), diagnostic case tracking with
+confidence/risk, automatic follow-up task scheduling, location-specific forecasts with
+best-time recommendations and weather alerts, and a working chat UI.
 
 **Documented as vision, not yet built** — captured in `docs/prd/`:
-- Voice input/output (today it's text + photo only, no speech)
+- Task cards / a 7-day plan view in the chat UI (weather tasks are API-only today)
 - Human-expert escalation actually routing to a person
 - Rice/Vegetable/Aquaculture-specific reasoning modules
 - Market price intelligence, financial/cash-flow advice
