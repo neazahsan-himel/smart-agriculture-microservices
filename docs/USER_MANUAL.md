@@ -73,13 +73,34 @@ internal fields (like `deleted`) never leak into API responses.
 The whole product is one page: `http://localhost:8080/` (a static Chat UI served directly by
 the api-gateway — no separate frontend server, no CORS issues since it's same-origin).
 
-1. Farmer picks a topic from a dropdown (General, Crop Recommendation, Pest Control, Weather
+1. **Who is farming?** On the first visit a start screen asks the farmer to pick their name
+   from the registered farmers, or register (name, phone, region, main crop, and location —
+   with a "📍 Use my current location" button). The choice is remembered in the browser; the
+   header shows "👨‍🌾 Name · Switch". A ⚠️ next to the name means no location is saved, so
+   weather and best-time advice can't work. "Continue as guest" chats without a profile.
+   (There is no real login yet; `?farmerId=<id>` in the URL overrides the choice.)
+2. Farmer picks a topic from a dropdown (General, Crop Recommendation, Pest Control, Weather
    Alert, Planting Schedule, Irrigation Advice) — or just starts typing.
-2. Farmer types a question, or attaches a photo (e.g. a leaf with spots), and hits send.
-3. A typing indicator shows while the AI thinks (this can legitimately take a while — see
+3. Farmer types a question, attaches a photo (e.g. a leaf with spots), or records a voice
+   message (🎤), and hits send.
+4. A typing indicator shows while the AI thinks (this can legitimately take a while — see
    the timeout note below).
-4. The advisor replies, and the conversation continues — every message is remembered, so the
-   farmer can say "it's still not better" three days later and the advisor has full context.
+5. The advisor replies, with Risk/Confidence badges and an optional ▶ voice reply. The
+   conversation continues — every message is remembered, so the farmer can say "it's still
+   not better" three days later and the advisor has full context.
+6. **Task cards.** When the advice involves weather-sensitive work (spray, fertilise,
+   irrigate, harvest, sow), a card appears under the topic bar: green with "Best time: Mon
+   2 Nov, 07:00", or amber when there's no safe time / no forecast (the card says why).
+   **↻ Refresh** re-checks the latest forecast; **✓ Done** / **Skip** close the task. Cards
+   the latest reply created or moved flash briefly.
+7. **🔔 Notifications.** The bell in the header shows an unread count of in-app alerts:
+   weather plans ("Weather plan: spray on Mon 2 Nov 06:00", "Good time to spray from…") and
+   follow-up reminders. Opening the bell lists them; clicking one marks it read. It checks
+   for new alerts every minute.
+8. **📅 This week.** The calendar button opens the farmer's week: overdue work in red, then
+   one card per day (today highlighted) with the weather (first ~3 days), planned work at its
+   best time, follow-up checks ("Check on: yellow leaves…") with their risk level, and ✓ / Skip
+   buttons; recent farm activity at the bottom.
 
 **Why can a reply take so long?** The AI model (`qwen3:8b`) is a "thinking" model, running
 on CPU, and the prompt sent to it includes the farmer's profile, crop catalog, recent
@@ -164,6 +185,37 @@ and it can say exactly why.
 
 ## 6. Running it locally (for a live demo)
 
+### Option 1: everything in Docker (one command)
+
+Needs Docker Desktop and **Ollama running on the host** with `qwen3:8b` and `llava:7b` pulled.
+Ollama stays outside Docker on purpose (GPU access, models already downloaded); the containers
+reach it at `host.docker.internal:11434`.
+
+```bash
+docker compose up -d --build      # first build takes a few minutes
+```
+
+Then open `http://localhost:8080/?farmerId=<id>` (Eureka dashboard: `http://localhost:8761`).
+
+| Published port | What |
+|---|---|
+| 8080 | api-gateway + Farmer Chat UI |
+| 8761 | Eureka dashboard |
+| 3307 | MySQL (`root` / `root`), so it doesn't clash with a host MySQL on 3306 |
+| 9000 / 5002 | Whisper ASR / Piper TTS |
+
+- The other services are **not** published; they talk to each other inside the compose network.
+  That also avoids clashes with anything else on the host using 8081–8086.
+- The Docker MySQL starts **empty** (its own volume). Databases are created automatically; tables
+  appear when the services start. To load the sample farmers, once the services are up:
+  `docker compose exec -T mysql mysql -uroot -proot < scripts/seed-data.sql`
+- Containers run in `Asia/Dhaka` time, because the best-time rules ("spray 06–10") use the JVM
+  clock. Change it with `APP_TIMEZONE=... docker compose up -d`.
+- Stop with `docker compose down`. Add `-v` to also delete the database.
+- Images are built with tests skipped; run tests with `mvnw test` outside Docker.
+
+### Option 2: each service with Maven
+
 Startup order matters because everything depends on `service-registry` and, in turn, on
 MySQL being reachable:
 
@@ -177,7 +229,8 @@ MySQL being reachable:
 4. Start the remaining services in any order: `farmer-service`, `crop-service`,
    `weather-service`, `farm-asset-service`, `notification-service`, `ai-advisor-service`.
 5. Start `api-gateway` last (port 8080).
-6. Open `http://localhost:8080/` — that's the whole demo.
+6. Open `http://localhost:8080/` — that's the whole demo. Pick or register a farmer on the
+   start screen (one with a location, for the weather features).
 7. Forecasts need **internet access** (to `api.open-meteo.com`) and a farmer profile with
    `latitude`/`longitude` set. Without either, the advisor falls back to whatever weather
    records are stored and the best-time engine reports "no forecast available".
@@ -195,10 +248,18 @@ This matters when explaining the project so nobody overclaims what exists:
 notification CRUD, the conversational advisor with photo-based diagnosis and voice
 input/output (Bangla speech via local Whisper/Piper or Google), diagnostic case tracking with
 confidence/risk, automatic follow-up task scheduling, location-specific forecasts with
-best-time recommendations and weather alerts, and a working chat UI.
+best-time recommendations and weather alerts, and a working chat UI with farmer selection,
+weather task cards and an in-app notification bell. The whole stack also runs with one
+`docker compose up` (§6).
+
+**Not built yet:**
+- Real login / authentication (the start screen just remembers a chosen farmer in the browser)
+- Choosing a specific plot/pond (farm asset) from the chat UI
+
+- Advice grounded in official Bangladeshi data: `knowledge-service` exists (tables, CSV import,
+  citations) but holds no real data yet; plan in `docs/plans/rice-knowledge-pilot.md`
 
 **Documented as vision, not yet built** — captured in `docs/prd/`:
-- Task cards / a 7-day plan view in the chat UI (weather tasks are API-only today)
 - Human-expert escalation actually routing to a person
 - Rice/Vegetable/Aquaculture-specific reasoning modules
 - Market price intelligence, financial/cash-flow advice

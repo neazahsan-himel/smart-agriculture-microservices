@@ -15,6 +15,7 @@
 | ai-advisor-service | 8084  | ai_advisor_db | Done    |
 | notification-service | 8085 | notification_db | Done  |
 | api-gateway        | 8080  | —            | Done     |
+| knowledge-service  | 8087  | knowledge_db | Skeleton (rice pilot Phase 1: tables, CRUD, CSV import; no real data yet) |
 
 ## Frontend
 | UI                  | URL                        | Tech            | Status |
@@ -22,11 +23,32 @@
 | Farmer Chat UI      | http://localhost:<br/>8080/     | HTML/CSS/JS     | Done   |
 
 ### Farmer Chat UI Details
-- Served as a static file: `api-gateway/src/main/resources/static/index.html`
-- Calls `POST /api/v1/advisor/advice` through the api-gateway (same origin — no CORS needed)
+- Served as a static file: `api-gateway/src/main/resources/static/index.html` (plain HTML/CSS/JS, no framework)
+- Multi-turn chat via `POST /api/v1/advisor/conversations` then `.../conversations/{id}/messages`,
+  through the api-gateway (same origin — no CORS needed)
 - Query types: GENERAL, CROP_RECOMMENDATION, PEST_CONTROL, WEATHER_ALERT, PLANTING_SCHEDULE, IRRIGATION_ADVICE
-- Features: topic dropdown, typing indicator, example question chips, Enter to send
-- ai-advisor route timeout overridden to 60s (Ollama can be slow)
+- Features: topic dropdown, typing indicator, example question chips, Enter to send, photo upload,
+  voice record/playback, Risk/Confidence badges
+- Farmer selection start screen: pick a registered farmer or register one (with geolocation);
+  remembered in `localStorage`, `?farmerId=<id>` overrides, guests get a `demo-` id. No real auth.
+- Weather task cards (pending weather-dependent `FarmTask`s): best time, Refresh / Done / Skip
+- 📅 7-Day Command Center drawer: `GET /api/v1/advisor/command-center?farmerId=&days=7` (overdue, per-day
+  items + weather summary, recent events), assembled by the pure `WeekPlanBuilder`
+- Notification bell (IN_APP only): opening it marks shown PENDING → SENT, clicking marks READ
+  (notification-service only allows READ from SENT); polls every 60s
+- ai-advisor route timeout overridden to 10 min (`metadata.response-timeout=600000`; Ollama on CPU is slow)
+
+## Docker
+- `docker compose up -d --build` runs MySQL, Eureka, all services, the gateway and the speech services
+- One shared image definition: `docker/spring-service/Dockerfile` with build arg `SERVICE=<module>`
+  (tests skipped in the image build; run them with `mvnw test`)
+- Docker addresses are injected as env vars in `docker-compose.yml` — never hardcode them in
+  `application.properties` (local `mvnw spring-boot:run` must keep working)
+- Ollama stays on the host, reached at `host.docker.internal:11434`
+- Containers run with `-Duser.timezone=Asia/Dhaka` (`APP_TIMEZONE`): best-time rules use the JVM clock
+- Published ports: 8080 (gateway), 8761 (Eureka), 3307 (MySQL, own volume, starts empty), 9000/5002 (speech)
+- New service → add a compose entry using the `x-spring-service` / `x-spring-env` anchors and its DB to
+  `docker/mysql/init/01-create-databases.sql`
 
 ## Architecture Rules (apply to every service)
 
@@ -88,6 +110,9 @@ farm-memory-driven advisory — captured in two PRD documents under `docs/prd/`:
   31 real-world reasoning scenarios and the intended intelligence flow: Observe → Understand
   Context → Ask → Verify → Diagnose → Estimate Risk → Recommend → Explain → Schedule →
   Follow-up → Learn.
+
+A proposed (not built) plan for grounding advice in official Bangladeshi data, starting with
+rice, lives in `docs/plans/rice-knowledge-pilot.md`.
 
 Do not treat items in the roadmap as implemented — only the Services & Ports and Frontend
 tables above reflect what's actually built. Xlsx originals live alongside the markdown

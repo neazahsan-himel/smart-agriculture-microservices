@@ -27,6 +27,10 @@ public interface FarmTaskRepository extends JpaRepository<FarmTask, String> {
 
     Page<FarmTask> findByFarmerIdAndDeletedFalse(String farmerId, Pageable pageable);
 
+    // Command Center: a farmer's pending work due before the end of the window (overdue included)
+    List<FarmTask> findByFarmerIdAndStatusAndDeletedFalseAndDueDateLessThanOrderByDueDateAsc(
+            String farmerId, FarmTask.TaskStatus status, LocalDateTime dueBefore);
+
         List<FarmTask> findByStatusAndWeatherDependentFalseAndDeletedFalseAndDueDateLessThanEqual(
             FarmTask.TaskStatus status, LocalDateTime now);
 }

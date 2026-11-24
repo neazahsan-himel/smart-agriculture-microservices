@@ -1,0 +1,11 @@
+**/target
+**/.idea
+**/*.iml
+**/.mvn
+**/mvnw
+**/mvnw.cmd
+.git
+docs
+scripts
+docker/piper-tts
+docker/mysql

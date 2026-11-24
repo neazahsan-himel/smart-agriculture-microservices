@@ -62,6 +62,391 @@
             50% { opacity: 0.4; }
         }
 
+        /* ── Farmer chip (header) ── */
+        #farmer-chip {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.18);
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        #farmer-chip.visible { display: flex; }
+
+        #farmer-chip button {
+            border: none;
+            background: none;
+            color: white;
+            font-size: 12px;
+            text-decoration: underline;
+            cursor: pointer;
+            opacity: 0.9;
+        }
+
+        /* ── Farmer picker (start screen) ── */
+        #farmer-picker {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(27,94,32,0.55);
+            z-index: 20;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        #farmer-picker.open { display: flex; }
+
+        .picker-card {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 460px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20px 22px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .picker-card h2 { color: #2e7d32; font-size: 20px; margin-bottom: 4px; }
+        .picker-card .picker-sub { font-size: 13px; color: #666; margin-bottom: 14px; }
+
+        .picker-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+
+        .picker-tabs button {
+            flex: 1;
+            padding: 8px;
+            border-radius: 20px;
+            border: 1.5px solid #a5d6a7;
+            background: white;
+            color: #2e7d32;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .picker-tabs button.active { background: #2e7d32; border-color: #2e7d32; color: white; }
+
+        #farmer-list { display: flex; flex-direction: column; gap: 6px; }
+
+        .farmer-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1.5px solid #e0efe0;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .farmer-option:hover { background: #f1f8e9; border-color: #a5d6a7; }
+        .farmer-option .farmer-where { font-size: 12px; color: #777; }
+        .farmer-option .farmer-loc { font-size: 11px; color: #2e7d32; white-space: nowrap; }
+        .farmer-option .farmer-loc.missing { color: #e65100; }
+
+        #farmer-form { display: none; flex-direction: column; gap: 8px; }
+        #farmer-form.visible { display: flex; }
+
+        #farmer-form label { font-size: 12px; font-weight: 600; color: #555; }
+
+        #farmer-form input, #farmer-form select {
+            width: 100%;
+            border: 1.5px solid #c8e6c9;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 14px;
+            font-family: inherit;
+            margin-top: 2px;
+        }
+
+        #farmer-form .form-row { display: flex; gap: 8px; }
+        #farmer-form .form-row > div { flex: 1; }
+
+        #farmer-form .field-error { font-size: 11px; color: #c62828; }
+
+        .picker-btn {
+            padding: 10px;
+            border-radius: 20px;
+            border: none;
+            background: #2e7d32;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .picker-btn:disabled { background: #a5d6a7; cursor: not-allowed; }
+
+        .picker-btn.secondary { background: #f1f8e9; color: #2e7d32; border: 1.5px solid #a5d6a7; }
+
+        .picker-msg { font-size: 13px; color: #666; padding: 8px 0; }
+        .picker-msg.error { color: #c62828; }
+
+        .picker-guest {
+            display: block;
+            margin: 14px auto 0;
+            border: none;
+            background: none;
+            color: #777;
+            font-size: 12px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        /* ── 7-Day Command Center ── */
+        #week-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.18);
+            font-size: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #week-btn:hover { background: rgba(255,255,255,0.3); }
+
+        #week-panel {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(27,94,32,0.45);
+            z-index: 15;
+            justify-content: flex-end;
+        }
+
+        #week-panel.open { display: flex; }
+
+        .week-drawer {
+            background: #f9fbf7;
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            overflow-y: auto;
+            box-shadow: -6px 0 24px rgba(0,0,0,0.2);
+        }
+
+        .week-head {
+            position: sticky;
+            top: 0;
+            background: #2e7d32;
+            color: white;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1;
+        }
+
+        .week-head h2 { font-size: 17px; }
+        .week-head .week-range { font-size: 12px; opacity: 0.85; }
+
+        .week-head button {
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #week-body { padding: 12px 14px 24px; }
+
+        .week-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin: 14px 2px 6px;
+        }
+
+        .week-section-title.overdue { color: #c62828; }
+
+        .week-day {
+            background: white;
+            border: 1px solid #e0efe0;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+
+        .week-day.today { border: 2px solid #43a047; }
+
+        .week-day-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .week-day-name { font-weight: 700; color: #2e7d32; font-size: 14px; }
+        .week-day-weather { font-size: 12px; color: #555; text-align: right; }
+        .week-day-empty { font-size: 12px; color: #999; margin-top: 4px; }
+
+        .week-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 8px 0 2px;
+            border-top: 1px dashed #e8f0e8;
+            margin-top: 6px;
+        }
+
+        .week-item:first-of-type { border-top: none; }
+
+        .week-item .week-time {
+            flex: 0 0 48px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #2e7d32;
+        }
+
+        .week-item.overdue .week-time { color: #c62828; }
+
+        .week-item .week-text { flex: 1; font-size: 13px; }
+        .week-item .week-title { font-weight: 600; }
+        .week-item .week-advice { font-size: 12px; color: #666; margin-top: 2px; line-height: 1.35; }
+        .week-item .week-risk { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+        .week-risk.risk-high { background: #ffebee; color: #c62828; }
+        .week-risk.risk-critical { background: #b71c1c; color: white; }
+        .week-risk.risk-medium { background: #fff8e1; color: #f57f17; }
+        .week-risk.risk-low { background: #e8f5e9; color: #2e7d32; }
+
+        .week-item .week-actions { display: flex; gap: 4px; }
+
+        .week-item .week-actions button {
+            border: 1px solid #a5d6a7;
+            background: #f1f8e9;
+            color: #2e7d32;
+            border-radius: 12px;
+            font-size: 11px;
+            padding: 3px 7px;
+            cursor: pointer;
+        }
+
+        .week-item .week-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .week-event { font-size: 12px; color: #555; padding: 4px 2px; }
+        .week-event .week-event-time { color: #999; margin-right: 6px; }
+
+        /* ── Notification bell ── */
+        .bell-wrap { position: relative; }
+
+        #bell-btn {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.18);
+            font-size: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #bell-btn:hover { background: rgba(255,255,255,0.3); }
+
+        #bell-count {
+            display: none;
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: #c62828;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 18px;
+        }
+
+        #bell-count.visible { display: block; }
+
+        #bell-panel {
+            display: none;
+            position: absolute;
+            top: 48px;
+            right: 0;
+            width: 340px;
+            max-height: 420px;
+            overflow-y: auto;
+            background: white;
+            color: #333;
+            border-radius: 12px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        #bell-panel.open { display: block; }
+
+        .bell-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-bottom: 1px solid #e8f5e9;
+            font-weight: 700;
+            font-size: 14px;
+            color: #2e7d32;
+            position: sticky;
+            top: 0;
+            background: white;
+        }
+
+        .bell-head button {
+            border: none;
+            background: none;
+            color: #2e7d32;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .bell-empty {
+            padding: 24px 14px;
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+        }
+
+        .notif-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f8e9;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+        }
+
+        .notif-item:hover { background: #f9fbf7; }
+
+        .notif-item.unread { background: #f1f8e9; border-left-color: #43a047; }
+        .notif-item.unread.priority-high     { border-left-color: #f57f17; }
+        .notif-item.unread.priority-critical { border-left-color: #c62828; }
+
+        .notif-item .notif-icon { font-size: 20px; line-height: 1.2; }
+
+        .notif-item .notif-title { font-size: 13px; font-weight: 600; }
+        .notif-item.unread .notif-title { font-weight: 700; }
+
+        .notif-item .notif-message {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.4;
+            margin-top: 2px;
+        }
+
+        .notif-item .notif-time { font-size: 11px; color: #999; margin-top: 3px; }
+
         /* ── Query type bar ── */
         .query-bar {
             background: white;
@@ -95,6 +480,79 @@
         .query-bar select:focus {
             border-color: #2e7d32;
         }
+
+        /* ── Weather task cards ── */
+        #task-strip {
+            display: none;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 20px;
+            background: #f9fbf7;
+            border-bottom: 1px solid #c8e6c9;
+        }
+
+        #task-strip.visible { display: flex; }
+
+        .task-card {
+            flex: 0 0 260px;
+            background: white;
+            border: 1.5px solid #c8e6c9;
+            border-left: 5px solid #43a047;
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .task-card.no-window { border-left-color: #f9a825; }
+
+        .task-card.highlight { animation: taskFlash 2s ease; }
+
+        @keyframes taskFlash {
+            0%, 40% { box-shadow: 0 0 0 3px rgba(67,160,71,0.45); }
+            100% { box-shadow: 0 0 0 0 rgba(67,160,71,0); }
+        }
+
+        .task-card .task-title {
+            font-weight: 700;
+            color: #2e7d32;
+            font-size: 14px;
+        }
+
+        .task-card.no-window .task-title { color: #e65100; }
+
+        .task-card .task-when { font-weight: 600; }
+
+        .task-card .task-planned { font-size: 11px; color: #888; }
+
+        .task-card .task-advice {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.4;
+        }
+
+        .task-card .task-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .task-card .task-actions button {
+            flex: 1;
+            padding: 4px 6px;
+            border-radius: 14px;
+            border: 1px solid #a5d6a7;
+            background: #f1f8e9;
+            color: #2e7d32;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .task-card .task-actions button:hover { background: #e0f2e0; }
+        .task-card .task-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* ── Chat area ── */
         #chat-area {
@@ -441,6 +899,21 @@
     <div class="status-dot">
         <span></span> AI Ready
     </div>
+    <div id="farmer-chip">
+        <span id="farmer-chip-name"></span>
+        <button onclick="openFarmerPicker()" title="Choose a different farmer">Switch</button>
+    </div>
+    <button id="week-btn" onclick="openWeek()" title="This week's farm plan" aria-label="This week's farm plan">📅</button>
+    <div class="bell-wrap">
+        <button id="bell-btn" onclick="toggleBell()" title="Notifications" aria-label="Notifications">🔔<span id="bell-count"></span></button>
+        <div id="bell-panel" role="dialog" aria-label="Notifications">
+            <div class="bell-head">
+                <span>Notifications</span>
+                <button onclick="markAllRead()">Mark all read</button>
+            </div>
+            <div id="bell-list"></div>
+        </div>
+    </div>
 </header>
 
 <div class="query-bar">
@@ -453,6 +926,87 @@
         <option value="PLANTING_SCHEDULE">Planting Schedule</option>
         <option value="IRRIGATION_ADVICE">Irrigation Advice</option>
     </select>
+</div>
+
+<div id="task-strip" aria-label="Planned weather tasks"></div>
+
+<div id="week-panel" role="dialog" aria-label="This week's farm plan">
+    <div class="week-drawer">
+        <div class="week-head">
+            <div>
+                <h2>📅 This week on your farm</h2>
+                <div class="week-range" id="week-range"></div>
+            </div>
+            <button onclick="closeWeek()" title="Close" aria-label="Close">✕</button>
+        </div>
+        <div id="week-body"></div>
+    </div>
+</div>
+
+<div id="farmer-picker" role="dialog" aria-label="Choose your farm">
+    <div class="picker-card">
+        <h2>🌾 Who is farming today?</h2>
+        <div class="picker-sub">Choose your farm so advice, weather and reminders are about your fields.</div>
+        <div class="picker-tabs">
+            <button id="tab-existing" class="active" onclick="showPickerTab('existing')">I'm registered</button>
+            <button id="tab-new" onclick="showPickerTab('new')">New farmer</button>
+        </div>
+
+        <div id="farmer-list"></div>
+
+        <form id="farmer-form" onsubmit="registerFarmer(event)" novalidate>
+            <div>
+                <label for="f-name">Name *</label>
+                <input id="f-name" name="name" maxlength="100" placeholder="e.g. Karim Saheb">
+                <div class="field-error" data-for="name"></div>
+            </div>
+            <div>
+                <label for="f-phone">Phone (with country code)</label>
+                <input id="f-phone" name="phoneNumber" placeholder="+8801712345678">
+                <div class="field-error" data-for="phoneNumber"></div>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label for="f-region">Region / District</label>
+                    <input id="f-region" name="region" placeholder="e.g. Rajshahi">
+                </div>
+                <div style="flex: 0 0 90px;">
+                    <label for="f-country">Country</label>
+                    <input id="f-country" name="countryCode" maxlength="2" value="BD">
+                    <div class="field-error" data-for="countryCode"></div>
+                </div>
+            </div>
+            <div>
+                <label for="f-farmtype">Main crop</label>
+                <select id="f-farmtype" name="farmType">
+                    <option value="">Not sure</option>
+                    <option value="RICE">Rice</option>
+                    <option value="WHEAT">Wheat</option>
+                    <option value="VEGETABLE">Vegetables</option>
+                    <option value="FRUIT">Fruit</option>
+                    <option value="MIXED">Mixed</option>
+                    <option value="OTHER">Other</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label for="f-lat">Latitude</label>
+                    <input id="f-lat" name="latitude" inputmode="decimal" placeholder="24.3745">
+                    <div class="field-error" data-for="latitude"></div>
+                </div>
+                <div>
+                    <label for="f-lon">Longitude</label>
+                    <input id="f-lon" name="longitude" inputmode="decimal" placeholder="88.6042">
+                    <div class="field-error" data-for="longitude"></div>
+                </div>
+            </div>
+            <button type="button" class="picker-btn secondary" onclick="useMyLocation()">📍 Use my current location</button>
+            <div class="picker-msg" id="farmer-form-msg">Location lets the advisor use your local weather forecast.</div>
+            <button type="submit" class="picker-btn" id="farmer-form-submit">Start</button>
+        </form>
+
+        <button class="picker-guest" onclick="continueAsGuest()">Continue as guest (no weather advice)</button>
+    </div>
 </div>
 
 <div id="chat-area">
@@ -522,19 +1076,24 @@
     const recordBtn          = document.getElementById('record-btn');
     const audioPreviewBar    = document.getElementById('audio-preview-bar');
     const audioPreviewDuration = document.getElementById('audio-preview-duration');
-    // Demo-only anonymous farmer id for this browser tab; a real login flow would replace this.
-    const farmerId = (() => {
-        try {
-            let id = sessionStorage.getItem('demoFarmerId');
-            if (!id) {
-                id = 'demo-' + crypto.randomUUID();
-                sessionStorage.setItem('demoFarmerId', id);
-            }
-            return id;
-        } catch (e) {
-            return 'demo-anonymous';
-        }
-    })();
+    const taskStrip          = document.getElementById('task-strip');
+    const bellPanel          = document.getElementById('bell-panel');
+    const bellList           = document.getElementById('bell-list');
+    const bellCount          = document.getElementById('bell-count');
+    const farmerPicker       = document.getElementById('farmer-picker');
+    const farmerList         = document.getElementById('farmer-list');
+    const farmerForm         = document.getElementById('farmer-form');
+    const farmerFormMsg      = document.getElementById('farmer-form-msg');
+    const farmerChip         = document.getElementById('farmer-chip');
+    const farmerChipName     = document.getElementById('farmer-chip-name');
+    // Farmer chosen on the start screen and remembered in this browser (no real login yet).
+    // ?farmerId=<id> overrides it; guests get an anonymous "demo-" id with no profile or location.
+    const FARMER_KEY = 'farmerId';
+    let farmerId = new URLSearchParams(location.search).get('farmerId') || readStoredFarmerId();
+
+    function readStoredFarmerId() {
+        try { return localStorage.getItem(FARMER_KEY); } catch (e) { return null; }
+    }
 
     // Auto-resize textarea
     input.addEventListener('input', () => {
@@ -657,6 +1216,7 @@
     }
 
     function sendMessage() {
+        if (!farmerId) { openFarmerPicker(); return; }
         const question = input.value.trim();
         if ((!question && !stagedImageBase64 && !stagedAudioBase64) || isWaiting || isRecording) return;
 
@@ -702,6 +1262,7 @@
             const lastAgentMessage = (data.messages || []).filter(m => m.sender === 'AGENT').pop();
             appendMessage('ai', lastAgentMessage ? lastAgentMessage.content : 'No advice returned.',
                 false, data.latestCase, null, data.replyAudioBase64);
+            loadWeatherTasks(true); // the reply may have created or moved a task
         })
         .catch(err => {
             removeTyping(indicator);
@@ -772,6 +1333,564 @@
         scrollToBottom();
     }
 
+    // ── 7-Day Command Center ──
+    const weekPanel = document.getElementById('week-panel');
+    const weekBody  = document.getElementById('week-body');
+    const weekRange = document.getElementById('week-range');
+    const WEATHER_ICONS = {
+        SUNNY: '☀️', PARTLY_CLOUDY: '⛅', CLOUDY: '☁️', RAINY: '🌧️', DRIZZLE: '🌦️',
+        THUNDERSTORM: '⛈️', STORMY: '🌪️', FOGGY: '🌫️', SNOWY: '❄️', HAIL: '🧊'
+    };
+    const EVENT_ICONS = { OBSERVATION: '👀', TREATMENT: '💊', DIAGNOSIS: '🔍', ADVICE: '💬', OUTCOME: '✅' };
+
+    function openWeek() {
+        if (!farmerId) { openFarmerPicker(); return; }
+        weekPanel.classList.add('open');
+        loadWeek();
+    }
+
+    function closeWeek() {
+        weekPanel.classList.remove('open');
+    }
+
+    weekPanel.addEventListener('click', e => { if (e.target === weekPanel) closeWeek(); });
+
+    function loadWeek() {
+        weekBody.innerHTML = '<div class="week-day-empty">Loading your week…</div>';
+        fetch(`/api/v1/advisor/command-center?farmerId=${encodeURIComponent(farmerId)}&days=7`)
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(renderWeek)
+            .catch(() => {
+                weekBody.innerHTML = '<div class="week-day-empty">Could not load your week. Please try again.</div>';
+            });
+    }
+
+    function renderWeek(week) {
+        weekRange.textContent = formatDay(week.from) + ' – ' + formatDay(week.to)
+            + (week.forecastAvailable ? '' : ' · no forecast (farm location missing?)');
+        weekBody.innerHTML = '';
+
+        if (week.overdue.length > 0) {
+            weekBody.appendChild(sectionTitle('Overdue', true));
+            const box = document.createElement('div');
+            box.className = 'week-day';
+            week.overdue.forEach(item => box.appendChild(renderWeekItem(item, true)));
+            weekBody.appendChild(box);
+        }
+
+        weekBody.appendChild(sectionTitle('Next 7 days', false));
+        week.days.forEach((day, i) => weekBody.appendChild(renderWeekDay(day, i === 0)));
+
+        if (week.recentEvents.length > 0) {
+            weekBody.appendChild(sectionTitle('Recent activity', false));
+            week.recentEvents.forEach(e => {
+                const row = document.createElement('div');
+                row.className = 'week-event';
+                const when = document.createElement('span');
+                when.className = 'week-event-time';
+                when.textContent = formatDay(e.occurredAt.substring(0, 10));
+                row.append(when, (EVENT_ICONS[e.eventType] || '•') + ' ' + (e.description || e.eventType));
+                weekBody.appendChild(row);
+            });
+        }
+    }
+
+    function sectionTitle(text, overdue) {
+        const t = document.createElement('div');
+        t.className = 'week-section-title' + (overdue ? ' overdue' : '');
+        t.textContent = text;
+        return t;
+    }
+
+    function renderWeekDay(day, isToday) {
+        const box = document.createElement('div');
+        box.className = 'week-day' + (isToday ? ' today' : '');
+
+        const head = document.createElement('div');
+        head.className = 'week-day-head';
+        const name = document.createElement('div');
+        name.className = 'week-day-name';
+        name.textContent = (isToday ? 'Today · ' : '') + formatDay(day.date);
+        const weather = document.createElement('div');
+        weather.className = 'week-day-weather';
+        weather.textContent = day.weather ? formatDayWeather(day.weather) : '';
+        head.append(name, weather);
+        box.appendChild(head);
+
+        if (day.items.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'week-day-empty';
+            empty.textContent = 'Nothing planned';
+            box.appendChild(empty);
+        }
+        day.items.forEach(item => box.appendChild(renderWeekItem(item, false)));
+        return box;
+    }
+
+    function renderWeekItem(item, overdue) {
+        const row = document.createElement('div');
+        row.className = 'week-item' + (overdue ? ' overdue' : '');
+
+        const time = document.createElement('div');
+        time.className = 'week-time';
+        time.textContent = overdue ? formatDay(item.time.substring(0, 10)) : item.time.substring(11, 16);
+
+        const text = document.createElement('div');
+        text.className = 'week-text';
+        const title = document.createElement('div');
+        title.className = 'week-title';
+        title.textContent = item.title;
+        if (item.caseRiskLevel) {
+            const risk = document.createElement('span');
+            risk.className = 'week-risk risk-' + item.caseRiskLevel.toLowerCase();
+            risk.textContent = item.caseRiskLevel;
+            title.appendChild(risk);
+        }
+        text.appendChild(title);
+        if (item.weatherAdvice) {
+            const advice = document.createElement('div');
+            advice.className = 'week-advice';
+            advice.textContent = item.weatherAdvice;
+            text.appendChild(advice);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'week-actions';
+        actions.appendChild(weekButton('✓', 'Mark done', () => finishWeekItem(item.taskId, 'DONE', actions)));
+        actions.appendChild(weekButton('Skip', 'Skip this task', () => finishWeekItem(item.taskId, 'SKIPPED', actions)));
+
+        row.append(time, text, actions);
+        return row;
+    }
+
+    function weekButton(label, tooltip, onClick) {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.title = tooltip;
+        btn.onclick = onClick;
+        return btn;
+    }
+
+    function finishWeekItem(taskId, status, actions) {
+        actions.querySelectorAll('button').forEach(b => b.disabled = true);
+        patchTaskStatus(taskId, status)
+            .then(() => { loadWeek(); loadWeatherTasks(false); })
+            .catch(() => {
+                actions.querySelectorAll('button').forEach(b => b.disabled = false);
+                appendMessage('ai', 'Could not update the task. Please try again.', true);
+            });
+    }
+
+    function formatDayWeather(w) {
+        const parts = [(WEATHER_ICONS[w.condition] || '') ];
+        if (w.minTemperatureCelsius != null && w.maxTemperatureCelsius != null) {
+            parts.push(Math.round(w.minTemperatureCelsius) + '–' + Math.round(w.maxTemperatureCelsius) + '°C');
+        }
+        if (w.rainfallMm != null && w.rainfallMm > 0) parts.push('rain ' + w.rainfallMm + ' mm');
+        if (w.maxWindSpeedKmh != null) parts.push('wind ' + Math.round(w.maxWindSpeedKmh) + ' km/h');
+        return parts.filter(Boolean).join(' · ');
+    }
+
+    // "2026-11-02" → "Mon 2 Nov" (date-only strings parsed as local midnight, not UTC)
+    function formatDay(isoDate) {
+        const [y, m, d] = isoDate.split('-').map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+
+    // ── Farmer selection ──
+    // Choosing a farmer reloads the page: conversation, task cards and bell all start fresh for them.
+    function chooseFarmer(id) {
+        try { localStorage.setItem(FARMER_KEY, id); } catch (e) { /* private mode: lasts for this page only */ }
+        location.href = location.pathname; // drops any ?farmerId= override
+    }
+
+    function continueAsGuest() {
+        chooseFarmer('demo-' + crypto.randomUUID());
+    }
+
+    // Clicking the backdrop closes the picker, but only if a farmer is already chosen
+    farmerPicker.addEventListener('click', e => {
+        if (e.target === farmerPicker && farmerId) farmerPicker.classList.remove('open');
+    });
+
+    function openFarmerPicker() {
+        farmerPicker.classList.add('open');
+        showPickerTab('existing');
+    }
+
+    function showPickerTab(tab) {
+        document.getElementById('tab-existing').classList.toggle('active', tab === 'existing');
+        document.getElementById('tab-new').classList.toggle('active', tab === 'new');
+        farmerList.style.display = tab === 'existing' ? 'flex' : 'none';
+        farmerForm.classList.toggle('visible', tab === 'new');
+        if (tab === 'existing') loadFarmerList();
+    }
+
+    function loadFarmerList() {
+        farmerList.innerHTML = '<div class="picker-msg">Loading farmers…</div>';
+        fetch('/api/v1/farmers?size=100&sortBy=name&sortDir=asc')
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(page => {
+                const farmers = page.content || [];
+                farmerList.innerHTML = '';
+                if (farmers.length === 0) {
+                    farmerList.innerHTML = '<div class="picker-msg">No farmers registered yet. Use “New farmer”.</div>';
+                    return;
+                }
+                farmers.forEach(f => farmerList.appendChild(renderFarmerOption(f)));
+            })
+            .catch(() => {
+                farmerList.innerHTML = '<div class="picker-msg error">Could not load farmers. Is farmer-service running?</div>';
+            });
+    }
+
+    function renderFarmerOption(f) {
+        const option = document.createElement('div');
+        option.className = 'farmer-option';
+        option.onclick = () => chooseFarmer(f.id);
+
+        const who = document.createElement('div');
+        const name = document.createElement('div');
+        name.textContent = f.name;
+        const where = document.createElement('div');
+        where.className = 'farmer-where';
+        where.textContent = [f.district, f.region, f.countryCode].filter(Boolean).join(', ');
+        who.append(name, where);
+
+        const loc = document.createElement('div');
+        const hasLocation = f.latitude != null && f.longitude != null;
+        loc.className = 'farmer-loc' + (hasLocation ? '' : ' missing');
+        loc.textContent = hasLocation ? '📍 location set' : 'no location';
+
+        option.append(who, loc);
+        return option;
+    }
+
+    function useMyLocation() {
+        if (!navigator.geolocation) {
+            farmerFormMsg.textContent = 'This browser cannot share location. Type latitude/longitude instead.';
+            return;
+        }
+        farmerFormMsg.className = 'picker-msg';
+        farmerFormMsg.textContent = 'Finding your location…';
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                document.getElementById('f-lat').value = pos.coords.latitude.toFixed(4);
+                document.getElementById('f-lon').value = pos.coords.longitude.toFixed(4);
+                farmerFormMsg.textContent = 'Location filled in.';
+            },
+            err => {
+                farmerFormMsg.className = 'picker-msg error';
+                farmerFormMsg.textContent = 'Could not get your location (' + err.message + '). Type it instead.';
+            },
+            { timeout: 10000 }
+        );
+    }
+
+    function registerFarmer(event) {
+        event.preventDefault();
+        farmerForm.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+        farmerFormMsg.className = 'picker-msg';
+
+        const value = name => farmerForm.elements[name].value.trim();
+        const number = name => value(name) === '' ? null : Number(value(name));
+        const body = {
+            name: value('name'),
+            phoneNumber: value('phoneNumber') || null,
+            region: value('region') || null,
+            countryCode: value('countryCode').toUpperCase() || null,
+            farmType: value('farmType') || null,
+            latitude: number('latitude'),
+            longitude: number('longitude')
+        };
+
+        const submit = document.getElementById('farmer-form-submit');
+        submit.disabled = true;
+        fetch('/api/v1/farmers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+            .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok) { chooseFarmer(data.id); return; }
+                Object.entries(data.fieldErrors || {}).forEach(([field, msg]) => {
+                    const slot = farmerForm.querySelector(`.field-error[data-for="${field}"]`);
+                    if (slot) slot.textContent = msg;
+                });
+                farmerFormMsg.className = 'picker-msg error';
+                farmerFormMsg.textContent = data.fieldErrors ? 'Please fix the fields above.' : (data.message || 'Could not register. Please try again.');
+            })
+            .catch(() => {
+                farmerFormMsg.className = 'picker-msg error';
+                farmerFormMsg.textContent = 'Could not reach the server. Please try again.';
+            })
+            .finally(() => { submit.disabled = false; });
+    }
+
+    // Header chip: who is farming, and a warning when weather advice can't work for them
+    function showFarmerChip() {
+        farmerChip.classList.add('visible');
+        if (farmerId.startsWith('demo-')) {
+            farmerChipName.textContent = '👤 Guest';
+            farmerChip.title = 'Guest: no farm profile, so no local weather advice';
+            return;
+        }
+        fetch(`/api/v1/farmers/${encodeURIComponent(farmerId)}`)
+            .then(res => {
+                if (res.status === 404) return null;
+                return res.ok ? res.json() : Promise.reject();
+            })
+            .then(f => {
+                if (!f) { // stored farmer no longer exists
+                    try { localStorage.removeItem(FARMER_KEY); } catch (e) { /* ignore */ }
+                    farmerId = null;
+                    farmerChip.classList.remove('visible');
+                    openFarmerPicker();
+                    return;
+                }
+                const hasLocation = f.latitude != null && f.longitude != null;
+                farmerChipName.textContent = '👨‍🌾 ' + f.name + (hasLocation ? '' : ' ⚠️');
+                farmerChip.title = hasLocation
+                    ? 'Weather advice uses your farm location'
+                    : 'No farm location saved: weather and best-time advice are unavailable';
+            })
+            .catch(() => { farmerChipName.textContent = '👨‍🌾 Farmer'; });
+    }
+
+    // ── Notification bell ──
+    // Lifecycle in notification-service is PENDING → SENT → READ (READ is only allowed from SENT).
+    // For in-app alerts: shown in the open panel = delivered (SENT); clicked = acknowledged (READ).
+    const NOTIF_ICONS = {
+        WEATHER_ALERT:       '🌦️',
+        CROP_ADVISORY:       '🌱',
+        PEST_WARNING:        '🐛',
+        IRRIGATION_REMINDER: '💧',
+        SYSTEM:              '⚙️',
+        OTHER:               '📌'
+    };
+    let notifications = [];
+
+    function loadNotifications() {
+        return fetch(`/api/v1/notifications/farmer/${encodeURIComponent(farmerId)}?size=30&sortBy=createdAt&sortDir=desc`)
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(page => {
+                notifications = (page.content || []).filter(n => n.channel === 'IN_APP');
+                renderBell();
+            })
+            .catch(() => { /* the bell is a convenience; the chat keeps working without it */ });
+    }
+
+    function renderBell() {
+        const unread = notifications.filter(n => n.status !== 'READ').length;
+        bellCount.textContent = unread > 99 ? '99+' : String(unread);
+        bellCount.classList.toggle('visible', unread > 0);
+
+        bellList.innerHTML = '';
+        if (notifications.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'bell-empty';
+            empty.textContent = 'No notifications yet. Weather alerts and follow-up reminders will appear here.';
+            bellList.appendChild(empty);
+            return;
+        }
+        notifications.forEach(n => bellList.appendChild(renderNotification(n)));
+    }
+
+    function renderNotification(n) {
+        const item = document.createElement('div');
+        item.className = 'notif-item' + (n.status !== 'READ' ? ' unread' : '')
+            + (n.priority ? ' priority-' + n.priority.toLowerCase() : '');
+        item.onclick = () => markRead(n).then(renderBell);
+
+        const icon = document.createElement('div');
+        icon.className = 'notif-icon';
+        icon.textContent = NOTIF_ICONS[n.type] || '📌';
+
+        const body = document.createElement('div');
+        const title = document.createElement('div');
+        title.className = 'notif-title';
+        title.textContent = n.title;
+        const message = document.createElement('div');
+        message.className = 'notif-message';
+        message.textContent = n.message || '';
+        const time = document.createElement('div');
+        time.className = 'notif-time';
+        time.textContent = formatAgo(n.createdAt);
+        body.append(title, message, time);
+
+        item.append(icon, body);
+        return item;
+    }
+
+    function toggleBell() {
+        const opening = !bellPanel.classList.contains('open');
+        bellPanel.classList.toggle('open', opening);
+        if (opening) {
+            loadNotifications().then(markShownAsSent);
+        }
+    }
+
+    // The farmer can now see them, so they count as delivered
+    function markShownAsSent() {
+        notifications.filter(n => n.status === 'PENDING').forEach(n => patchNotification(n, 'sent'));
+    }
+
+    function markRead(n) {
+        if (n.status === 'READ') return Promise.resolve();
+        const sent = n.status === 'PENDING' ? patchNotification(n, 'sent') : Promise.resolve();
+        return sent.then(() => patchNotification(n, 'read'));
+    }
+
+    function markAllRead() {
+        Promise.all(notifications.map(markRead)).then(renderBell);
+    }
+
+    // Updates the local copy only when the server accepted the transition
+    function patchNotification(n, action) {
+        return fetch(`/api/v1/notifications/${n.id}/${action}`, { method: 'PATCH' })
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(updated => { n.status = updated.status; })
+            .catch(() => { /* left as-is; the next load shows the server's state */ });
+    }
+
+    function formatAgo(isoLocal) {
+        const minutes = Math.round((Date.now() - new Date(isoLocal).getTime()) / 60000);
+        if (minutes < 1) return 'just now';
+        if (minutes < 60) return minutes + ' min ago';
+        if (minutes < 24 * 60) return Math.round(minutes / 60) + ' h ago';
+        return formatDateTime(isoLocal);
+    }
+
+    // Close the panel on any click outside it
+    document.addEventListener('click', e => {
+        if (bellPanel.classList.contains('open') && !e.target.closest('.bell-wrap')) {
+            bellPanel.classList.remove('open');
+        }
+    });
+
+    // ── Weather task cards ──
+    const TASK_LABELS = {
+        SPRAY:     '🧴 Spray',
+        FERTILIZE: '🌱 Fertilise',
+        IRRIGATE:  '💧 Irrigate',
+        HARVEST:   '🌾 Harvest',
+        SOW:       '🌰 Sow'
+    };
+    let taskSignatures = {}; // task id → what the card shows, to highlight tasks a reply created or moved
+
+    function loadWeatherTasks(highlightChanges) {
+        fetch(`/api/v1/advisor/farm-tasks?farmerId=${encodeURIComponent(farmerId)}&size=50&sortBy=dueDate&sortDir=asc`)
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(page => {
+                const tasks = (page.content || []).filter(t => t.weatherDependent && t.status === 'PENDING');
+                const previous = taskSignatures;
+                taskSignatures = {};
+                taskStrip.innerHTML = '';
+                tasks.forEach(task => {
+                    const card = renderTaskCard(task);
+                    taskSignatures[task.id] = taskSignature(task);
+                    if (highlightChanges && previous[task.id] !== taskSignatures[task.id]) {
+                        card.classList.add('highlight');
+                    }
+                    taskStrip.appendChild(card);
+                });
+                taskStrip.classList.toggle('visible', tasks.length > 0);
+            })
+            .catch(() => { /* cards are a convenience; the chat keeps working without them */ });
+    }
+
+    function taskSignature(task) {
+        return [task.dueDate, task.recommendedStartAt, task.weatherAdvice].join('|');
+    }
+
+    function renderTaskCard(task) {
+        const card = document.createElement('div');
+        card.className = 'task-card' + (task.recommendedStartAt ? '' : ' no-window');
+        card.dataset.taskId = task.id;
+
+        const title = document.createElement('div');
+        title.className = 'task-title';
+        title.textContent = TASK_LABELS[task.taskType] || task.taskType;
+
+        // No recommended time means no safe slot, nothing needed (irrigation after rain) or no forecast;
+        // the advice text says which.
+        const when = document.createElement('div');
+        when.className = 'task-when';
+        when.textContent = task.recommendedStartAt
+            ? 'Best time: ' + formatDateTime(task.recommendedStartAt)
+            : 'No recommended time yet';
+
+        const planned = document.createElement('div');
+        planned.className = 'task-planned';
+        planned.textContent = 'Planned ' + formatDateTime(task.dueDate)
+            + (task.weatherCheckedAt ? ' · checked ' + formatDateTime(task.weatherCheckedAt) : '');
+
+        const advice = document.createElement('div');
+        advice.className = 'task-advice';
+        advice.textContent = task.weatherAdvice || '';
+
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        actions.appendChild(taskButton('↻ Refresh', 'Re-check against the latest forecast', () => refreshTask(task.id, card)));
+        actions.appendChild(taskButton('✓ Done', 'Mark this task as done', () => setTaskStatus(task.id, 'DONE', card)));
+        actions.appendChild(taskButton('Skip', 'Skip this task', () => setTaskStatus(task.id, 'SKIPPED', card)));
+
+        card.append(title, when, planned, advice, actions);
+        return card;
+    }
+
+    function taskButton(label, tooltip, onClick) {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.title = tooltip;
+        btn.onclick = onClick;
+        return btn;
+    }
+
+    function refreshTask(taskId, card) {
+        setCardBusy(card, true);
+        fetch(`/api/v1/advisor/farm-tasks/${taskId}/best-time`)
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(task => {
+                const updated = renderTaskCard(task);
+                if (taskSignatures[task.id] !== taskSignature(task)) updated.classList.add('highlight');
+                taskSignatures[task.id] = taskSignature(task);
+                card.replaceWith(updated);
+            })
+            .catch(() => {
+                setCardBusy(card, false);
+                appendMessage('ai', 'Could not refresh the weather check for this task. Please try again.', true);
+            });
+    }
+
+    // Shared by task cards and the week view
+    function patchTaskStatus(taskId, status) {
+        return fetch(`/api/v1/advisor/farm-tasks/${taskId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status })
+        }).then(res => res.ok ? res.json() : Promise.reject());
+    }
+
+    function setTaskStatus(taskId, status, card) {
+        setCardBusy(card, true);
+        patchTaskStatus(taskId, status)
+            .then(() => {
+                delete taskSignatures[taskId];
+                card.remove();
+                taskStrip.classList.toggle('visible', taskStrip.children.length > 0);
+            })
+            .catch(() => {
+                setCardBusy(card, false);
+                appendMessage('ai', 'Could not update the task. Please try again.', true);
+            });
+    }
+
+    function setCardBusy(card, busy) {
+        card.querySelectorAll('button').forEach(btn => btn.disabled = busy);
+    }
+
     function showTyping() {
         const wrapper = document.createElement('div');
         wrapper.className = 'typing-indicator';
@@ -814,6 +1933,23 @@
 
     function formatTime(date) {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Server sends zone-less LocalDateTime ("2026-10-30T06:00:00"), parsed as browser-local time
+    function formatDateTime(isoLocal) {
+        return new Date(isoLocal).toLocaleString([], {
+            weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    if (farmerId) {
+        showFarmerChip();
+        loadWeatherTasks(false);
+        loadNotifications();
+        // Schedulers create alerts hourly; a minute's delay in showing them is fine
+        setInterval(() => { if (farmerId && !bellPanel.classList.contains('open')) loadNotifications(); }, 60000);
+    } else {
+        openFarmerPicker();
     }
 </script>
 

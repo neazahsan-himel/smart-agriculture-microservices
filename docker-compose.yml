@@ -1,4 +1,133 @@
+# Full stack: MySQL + Eureka + all services + gateway + local speech services.
+#   docker compose up -d --build      → open http://localhost:8080/
+# Ollama is NOT containerised: it runs on the host (GPU, models already pulled) and is
+# reached via host.docker.internal:11434.
+# Only the gateway (8080), Eureka dashboard (8761), MySQL (3307) and speech services are
+# published to the host; the other services talk to each other on the compose network.
+
+x-spring-service: &spring-service
+  restart: unless-stopped
+  depends_on:
+    mysql:
+      condition: service_healthy
+    service-registry:
+      condition: service_started
+
+x-spring-env: &spring-env
+  # Eureka address with the exact property key (env-var relaxed binding lowercases map keys)
+  SPRING_APPLICATION_JSON: '{"eureka":{"client":{"service-url":{"defaultZone":"http://service-registry:8761/eureka"}}}}'
+  SPRING_DATASOURCE_USERNAME: root
+  SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+  # Best-time rules (e.g. spray 06-10) use the JVM clock; containers default to UTC
+  TZ: ${APP_TIMEZONE:-Asia/Dhaka}
+  JAVA_TOOL_OPTIONS: -Duser.timezone=${APP_TIMEZONE:-Asia/Dhaka} -Xmx384m
+
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: agri-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      TZ: ${APP_TIMEZONE:-Asia/Dhaka}
+    ports:
+      - "3307:3306"   # 3307 so it doesn't clash with a MySQL already running on the host
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # TCP ping: fails during first-run init (networking is off then), so services wait for the real server
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  service-registry:
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: service-registry } }
+    container_name: agri-service-registry
+    environment:
+      TZ: ${APP_TIMEZONE:-Asia/Dhaka}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${APP_TIMEZONE:-Asia/Dhaka} -Xmx256m
+    ports:
+      - "8761:8761"
+    restart: unless-stopped
+
+  farmer-service:
+    <<: *spring-service
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: farmer-service } }
+    container_name: agri-farmer-service
+    environment:
+      <<: *spring-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/farmer_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
+  crop-service:
+    <<: *spring-service
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: crop-service } }
+    container_name: agri-crop-service
+    environment:
+      <<: *spring-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/crop_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
+  weather-service:
+    <<: *spring-service
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: weather-service } }
+    container_name: agri-weather-service
+    environment:
+      <<: *spring-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/weather_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
+  farm-asset-service:
+    <<: *spring-service
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: farm-asset-service } }
+    container_name: agri-farm-asset-service
+    environment:
+      <<: *spring-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/farm_asset_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
+  notification-service:
+    <<: *spring-service
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: notification-service } }
+    container_name: agri-notification-service
+    environment:
+      <<: *spring-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/notification_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
+  knowledge-service:
+    <<: *spring-service
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: knowledge-service } }
+    container_name: agri-knowledge-service
+    environment:
+      <<: *spring-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/knowledge_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
+  ai-advisor-service:
+    <<: *spring-service
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: ai-advisor-service } }
+    container_name: agri-ai-advisor-service
+    environment:
+      <<: *spring-env
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ai_advisor_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      OLLAMA_API_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      SPEECH_LOCAL_ASR_BASE_URL: http://whisper-asr:9000
+      SPEECH_LOCAL_TTS_BASE_URL: http://piper-tts:5002
+      # Base64 photos/voice in prompts need more heap than the CRUD services
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${APP_TIMEZONE:-Asia/Dhaka} -Xmx768m
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Docker Desktop provides this already; needed on Linux
+
+  api-gateway:
+    build: { context: ., dockerfile: docker/spring-service/Dockerfile, args: { SERVICE: api-gateway } }
+    container_name: agri-api-gateway
+    depends_on:
+      - service-registry
+    environment:
+      SPRING_APPLICATION_JSON: '{"eureka":{"client":{"service-url":{"defaultZone":"http://service-registry:8761/eureka"}}}}'
+      TZ: ${APP_TIMEZONE:-Asia/Dhaka}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=${APP_TIMEZONE:-Asia/Dhaka} -Xmx384m
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
   whisper-asr:
     image: onerahmet/openai-whisper-asr-webservice:latest
     container_name: whisper-asr
@@ -15,3 +144,6 @@ services:
     ports:
       - "5002:5002"
     restart: unless-stopped
+
+volumes:
+  mysql-data:
