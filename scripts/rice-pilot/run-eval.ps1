@@ -61,7 +61,13 @@ if (-not $farmer) {
     Write-Host "Using test farmer $($farmer.id)"
 }
 
-if ($Only.Count -gt 0) { $questions = @($questions | Where-Object { $Only -contains $_.id }) }
+# With "powershell -File", "-Only F1,P3" arrives as one string "F1,P3", so split on commas here
+$Only = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($Only.Count -gt 0) {
+    $unknown = @($Only | Where-Object { $questions.id -notcontains $_ })
+    if ($unknown.Count -gt 0) { throw "Unknown question id(s): $($unknown -join ', ')" }
+    $questions = @($questions | Where-Object { $Only -contains $_.id })
+}
 
 $sb = New-Object Text.StringBuilder
 [void]$sb.AppendLine("# Rice Pilot - $Run results")

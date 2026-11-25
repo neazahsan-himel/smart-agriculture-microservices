@@ -185,7 +185,7 @@ running instance wasn't disturbed). They caught one fragility: `casesById.get(nu
 maps; the lookup is now guarded. **Not yet verified live** (ai-advisor can't be restarted during the
 baseline run) and not seen in a browser.
 
-## 7d. Found: conversation turns fail when a scheduler touches the farmer's tasks (open)
+## 7d. Found: conversation turns fail when a scheduler touches the farmer's tasks (fixed 2026-11-24)
 
 Baseline question F3 returned **500** after 451 s. Root cause (from the ai-advisor log):
 `startConversation` / `continueConversation` are `@Transactional`, and the transaction stays open
@@ -267,14 +267,14 @@ Suggested commits (after the checks below): ① UI, ② Docker, ③ knowledge-se
 
 | Item | Status |
 |---|---|
-| Free memory: stop the local `mvnw` services (§7f), switch to `docker compose up -d --build` | 🔲 First thing |
-| Browser check: start screen, task cards, bell, 📅 week drawer; Command Center endpoint live | 🔲 |
-| Commit the Day 12 work (suggested split in §7f) | 🔲 After the checks |
-| Finish the baseline (§7e) | 🔲 After the §7d fix |
+| Free memory: stop the local `mvnw` services (§7f), switch to `docker compose up -d --build` | ✅ 2026-11-24: all 8 services registered, routes 200 via gateway |
+| Browser check: start screen, task cards, bell, 📅 week drawer; Command Center endpoint live | ✅ 2026-11-24 (Docker): picker, Spray card + Refresh, bell PENDING→SENT→READ, week drawer; no console errors. Live chat turns 297 s / 506 s, SPRAY + FOLLOW_UP tasks created |
+| Commit the Day 12 work (suggested split in §7f) | ✅ Pushed as `f93f176` |
+| Finish the baseline (§7e) | 🔲 Unblocked (§7d fixed) |
 | Rice pilot: collect documents (D1–D5), finish baseline (photos, product names), load real data via CSV import | 🔲 Needs the user |
 | Rice pilot Phase 2: document chunks + embeddings + search | 🔲 After documents |
-| Fix: LLM call inside the conversation transaction (§7d) | 🔲 Recommended next; loses farmer turns |
-| 7-Day Farm Command Center | ✅ Built + unit-tested; 🔲 live/browser check |
+| Fix: LLM call inside the conversation transaction (§7d) | ✅ Fixed 2026-11-24 (three-phase turn + retry, `ConversationTurnTransactionTest`) |
+| 7-Day Farm Command Center | ✅ Built, unit-tested, live + browser checked |
 | Farm asset (plot/pond) picker in the chat | 🔲 Proposed |
 | Crop-aware best-time rules, recent rainfall | 🔲 Proposed |
 

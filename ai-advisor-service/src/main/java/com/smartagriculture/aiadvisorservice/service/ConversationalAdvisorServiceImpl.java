@@ -28,10 +28,12 @@ import com.smartagriculture.aiadvisorservice.service.weather.ForecastFormatter;
 import com.smartagriculture.aiadvisorservice.service.weather.WeatherTaskAdvisor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,6 +49,8 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
 
     private static final String FOLLOW_UP_TASK_TYPE = "FOLLOW_UP";
     private static final int PROMPT_FORECAST_HOURS = 48;
+    // A scheduler can still bump a task's @Version during the short persist transaction; retry with fresh reads
+    static final int MAX_PERSIST_ATTEMPTS = 3;
 
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
@@ -60,9 +64,10 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     private final SpeechToTextClient speechToTextClient;
     private final TextToSpeechClient textToSpeechClient;
     private final WeatherTaskAdvisor weatherTaskAdvisor;
+    private final TransactionTemplate transactionTemplate;
 
+    // Not @Transactional: a turn includes a multi-minute LLM call, see processTurn
     @Override
-    @Transactional
     public ConversationDto.Response startConversation(ConversationDto.StartRequest request) {
         log.info("Starting conversation for farmerId={}, queryType={}", request.getFarmerId(), request.getQueryType());
 
@@ -78,8 +83,8 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         return buildResponse(conversation, replyAudio.orElse(null));
     }
 
+    // Not @Transactional: a turn includes a multi-minute LLM call, see processTurn
     @Override
-    @Transactional
     public ConversationDto.Response continueConversation(String conversationId, ConversationDto.MessageRequest request) {
         Conversation conversation = conversationRepository.findByIdAndDeletedFalse(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
@@ -189,12 +194,58 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
     }
 
     // ── Core turn pipeline ───────────────────────────────────────────────────
+    //
+    // A turn runs in three phases so no database transaction stays open during the LLM call
+    // (it can take minutes on CPU). Previously the whole turn was one transaction: its
+    // REPEATABLE READ snapshot went stale while Ollama ran, an hourly scheduler bumped a task's
+    // @Version, the final save threw StaleObjectStateException and the rollback lost both the
+    // farmer's message and the reply (DAY12-PROGRESS §7d).
+    //   1. save the farmer's message (own short transaction; kept even if a later phase fails)
+    //   2. gather context and call the LLM (no transaction)
+    //   3. persist case / tasks / reply / event in one short transaction with fresh reads,
+    //      retried on optimistic-lock conflicts
 
     private Optional<String> processTurn(Conversation conversation, String farmerMessage, String imageBase64,
                                           String audioBase64) {
         boolean hasImage = imageBase64 != null && !imageBase64.isBlank();
         boolean hasAudio = audioBase64 != null && !audioBase64.isBlank();
 
+        // Phase 1
+        String farmerContent = resolveFarmerContent(farmerMessage, hasImage, hasAudio, audioBase64);
+        messageRepository.save(Message.builder()
+                .conversationId(conversation.getId())
+                .sender(Message.Sender.FARMER)
+                .content(farmerContent)
+                .imageBase64(hasImage ? imageBase64 : null)
+                .audioBase64(hasAudio ? audioBase64 : null)
+                .build());
+
+        // Phase 2
+        FarmerResponse farmer = contextFetcher.fetchFarmer(conversation.getFarmerId());
+        List<CropSummary> crops = contextFetcher.fetchCrops();
+        // Location-specific forecast when the farmer has coordinates; otherwise the latest records as before
+        List<WeatherSummary> forecast = contextFetcher.fetchForecast(farmer, PROMPT_FORECAST_HOURS);
+        List<WeatherSummary> weather = forecast.isEmpty() ? contextFetcher.fetchWeather() : List.of();
+        List<FarmEvent> farmMemory = fetchFarmMemory(conversation);
+        List<Message> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
+
+        String userMessage = buildUserMessage(conversation, farmer, crops, forecast, weather, farmMemory, history, hasImage);
+        String rawReply = ollamaApiClient.getAdvice(PromptTemplates.CONVERSATION_SYSTEM_PROMPT, userMessage,
+                hasImage ? List.of(imageBase64) : List.of());
+        AdvisoryResponseParser.ParsedAdvice parsed = responseParser.parse(rawReply);
+
+        // Fetched here so phase 3 makes no HTTP calls inside its transaction (never throws; empty when unavailable)
+        List<WeatherSummary> taskForecast = parsed.suggestedTask() != null
+                ? weatherTaskAdvisor.forecastFor(conversation.getFarmerId())
+                : List.of();
+
+        // Phase 3
+        String agentText = persistReplyWithRetry(conversation, farmerContent, hasImage, parsed, taskForecast);
+
+        return hasAudio ? textToSpeechClient.synthesize(agentText) : Optional.empty();
+    }
+
+    private String resolveFarmerContent(String farmerMessage, boolean hasImage, boolean hasAudio, String audioBase64) {
         String effectiveMessage = farmerMessage;
         if (hasAudio) {
             boolean hasTypedFallback = effectiveMessage != null && !effectiveMessage.isBlank();
@@ -211,31 +262,29 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
             }
         }
 
-        String farmerContent = (effectiveMessage == null || effectiveMessage.isBlank())
+        return (effectiveMessage == null || effectiveMessage.isBlank())
                 ? (hasImage ? "(photo attached)" : effectiveMessage)
                 : effectiveMessage;
+    }
 
-        messageRepository.save(Message.builder()
-                .conversationId(conversation.getId())
-                .sender(Message.Sender.FARMER)
-                .content(farmerContent)
-                .imageBase64(hasImage ? imageBase64 : null)
-                .audioBase64(hasAudio ? audioBase64 : null)
-                .build());
+    private String persistReplyWithRetry(Conversation conversation, String farmerContent, boolean hasImage,
+                                         AdvisoryResponseParser.ParsedAdvice parsed, List<WeatherSummary> taskForecast) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return transactionTemplate.execute(status ->
+                        persistReply(conversation, farmerContent, hasImage, parsed, taskForecast));
+            } catch (OptimisticLockingFailureException e) {
+                if (attempt >= MAX_PERSIST_ATTEMPTS) {
+                    throw e;
+                }
+                log.warn("Concurrent update while saving the reply for conversation {} (attempt {}/{}), retrying: {}",
+                        conversation.getId(), attempt, MAX_PERSIST_ATTEMPTS, e.getMessage());
+            }
+        }
+    }
 
-        FarmerResponse farmer = contextFetcher.fetchFarmer(conversation.getFarmerId());
-        List<CropSummary> crops = contextFetcher.fetchCrops();
-        // Location-specific forecast when the farmer has coordinates; otherwise the latest records as before
-        List<WeatherSummary> forecast = contextFetcher.fetchForecast(farmer, PROMPT_FORECAST_HOURS);
-        List<WeatherSummary> weather = forecast.isEmpty() ? contextFetcher.fetchWeather() : List.of();
-        List<FarmEvent> farmMemory = fetchFarmMemory(conversation);
-        List<Message> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
-
-        String userMessage = buildUserMessage(conversation, farmer, crops, forecast, weather, farmMemory, history, hasImage);
-        String rawReply = ollamaApiClient.getAdvice(PromptTemplates.CONVERSATION_SYSTEM_PROMPT, userMessage,
-                hasImage ? List.of(imageBase64) : List.of());
-        AdvisoryResponseParser.ParsedAdvice parsed = responseParser.parse(rawReply);
-
+    private String persistReply(Conversation conversation, String farmerContent, boolean hasImage,
+                                AdvisoryResponseParser.ParsedAdvice parsed, List<WeatherSummary> taskForecast) {
         DiagnosticCase diagnosticCase = upsertDiagnosticCase(conversation, farmerContent, hasImage, parsed);
 
         // The rule-based best time is appended to the reply so the chat always agrees with the
@@ -243,7 +292,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         // "spray at 00-03" because those blocks were dry).
         String agentText = parsed.visibleText();
         if (parsed.suggestedTask() != null) {
-            FarmTask task = upsertSuggestedWeatherTask(diagnosticCase, parsed.suggestedTask());
+            FarmTask task = upsertSuggestedWeatherTask(diagnosticCase, parsed.suggestedTask(), taskForecast);
             if (task.getWeatherAdvice() != null) {
                 agentText = agentText + "\n\nForecast check: " + task.getWeatherAdvice();
             }
@@ -263,7 +312,7 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
                 .diagnosticCaseId(diagnosticCase.getId())
                 .build());
 
-        return hasAudio ? textToSpeechClient.synthesize(agentText) : Optional.empty();
+        return agentText;
     }
 
     private List<FarmEvent> fetchFarmMemory(Conversation conversation) {
@@ -331,7 +380,8 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
 
     // Upsert, not 409: the model may repeat the same TASK tag on several turns of one conversation,
     // which should just move the planned date of the existing pending task.
-    private FarmTask upsertSuggestedWeatherTask(DiagnosticCase diagnosticCase, AdvisoryResponseParser.SuggestedTask suggested) {
+    private FarmTask upsertSuggestedWeatherTask(DiagnosticCase diagnosticCase, AdvisoryResponseParser.SuggestedTask suggested,
+                                                List<WeatherSummary> forecast) {
         String taskType = suggested.type().name();
         FarmTask task = farmTaskRepository.findFirstByFarmerIdAndFarmAssetIdAndTaskTypeAndStatusAndDeletedFalse(
                         diagnosticCase.getFarmerId(), diagnosticCase.getFarmAssetId(), taskType, FarmTask.TaskStatus.PENDING)
@@ -345,7 +395,13 @@ public class ConversationalAdvisorServiceImpl implements ConversationalAdvisorSe
         task.setDueDate(LocalDateTime.now().plusDays(suggested.daysFromNow()));
         task.setPriority(mapRiskToPriority(diagnosticCase.getRiskLevel()));
         task.setSourceDiagnosticCaseId(diagnosticCase.getId());
-        evaluateBestEffort(task);
+        // Uses the forecast fetched before the transaction, so no HTTP call happens while it is open
+        try {
+            weatherTaskAdvisor.evaluate(task, forecast, LocalDateTime.now());
+        } catch (Exception e) {
+            log.warn("Best-time evaluation failed for {} task of farmer {}: {}",
+                    taskType, diagnosticCase.getFarmerId(), e.getMessage());
+        }
         boolean isNew = task.getId() == null;
         FarmTask saved = farmTaskRepository.save(task);
         log.info("Advisor suggested {} in {} day(s) for farmer {} — task {}", taskType, suggested.daysFromNow(),
